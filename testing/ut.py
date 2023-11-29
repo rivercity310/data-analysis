@@ -1,15 +1,30 @@
 import unittest
 
+outerTitle = 'Bar'
+
 
 class TestStringMethods(unittest.TestCase):
-    def test_upper(self):
-        self.assertEqual('foo'.upper(), 'FOO')
+    def setUp(self) -> None:
+        self.title = 'foo'
+        self.title2 = 'Foo'
 
-    def test_isupper(self):
-        self.assertTrue('FOO'.isupper())
-        self.assertFalse('Foo'.isupper())
+        global outerTitle
+        outerTitle = 'bar'
+        print("[setUp] - {}".format(outerTitle))
 
-    def test_split(self):
+    def tearDown(self) -> None:
+        global outerTitle
+        outerTitle = 'Bar'
+        print("[tearDown] - {}".format(outerTitle))
+
+    def test_upper(self) -> None:
+        print("[test_upper]")
+        self.assertEqual(self.title.upper(), 'FOO')
+        self.assertFalse(self.title2 == self.title)
+        self.assertTrue(outerTitle == 'bar')
+
+    def test_split(self) -> None:
+        print("[test_split]")
         s = 'hello world'
         self.assertEqual(s.split(), ['hello', 'world'])
 
@@ -18,5 +33,13 @@ class TestStringMethods(unittest.TestCase):
             s.split(2)
 
 
+def suiteCase():
+    suite = unittest.TestSuite()
+    suite.addTest(TestStringMethods('test_split'))
+    return suite
+
+
 if __name__ == '__main__':
+    # runner = unittest.TextTestRunner()
+    # runner.run(suiteCase())
     unittest.main()
