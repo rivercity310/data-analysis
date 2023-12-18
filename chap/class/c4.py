@@ -19,7 +19,7 @@ class PythonDeveloper(Developer):
 
     # overriding
     def coding(self):
-        super().coding()        # 부모 클래스의 인스턴스가 호출되어 부모 클래스의 속성이나 메서드 호출 가능
+        super().coding()        # super(): 부모 클래스의 인스턴스가 호출되어 부모 클래스의 속성이나 메서드 호출 가능
         print(f"{self.name} is Python Coding")
 
 

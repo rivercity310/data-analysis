@@ -7,21 +7,25 @@
 balls = {"red": 4, "blue": 3, "green": 5}
 print(f"balls = {balls}, type = {type(balls)}, len = {len(balls)}")
 
-balls["black"] = 1 # 항목 추가
+balls["black"] = 1      # 항목 추가
 print(balls)
 
-del balls["green"] # 항목 삭제
+del balls["green"]      # 항목 삭제
 print(balls)
 
 # 사전의 키들만 추출 -> 일반적으로 list로 변환
 print(balls.keys())
 print(list(balls.keys()))
-print(list(sorted(balls.keys()))) # 사전의 키들을 정렬하여 리스트로 변환
+print(list(sorted(balls.keys())))       # 사전의 키들을 정렬하여 리스트로 변환
 
 # 사전의 값들만 추출
 print(balls.values())
 print(list(balls.values()))
-print(list(sorted(balls.values()))) # 사전의 값들을 정렬하여 리스트로 변환
+print(list(sorted(balls.values())))     # 사전의 값들을 정렬하여 리스트로 변환
+
+# Iteration
+for key in balls:
+    print(f"{key}: {balls[key]}")
 
 # 특정 키 값의 존재 유무 확인
 print('blue' in balls)

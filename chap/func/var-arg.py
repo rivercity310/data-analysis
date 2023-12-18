@@ -16,10 +16,10 @@ introduce_my_car(type='SUV', manufacturer='BMW')
 # 키워드 인자 값 뒤에 키워드 없는 인자 값 사용 불가 -> SyntaxError
 # introduce_my_car(manufacturer='현대', 2)
 
-# [ 가변 인자 리스트 활용 ] : 열거된 매개변수 -> 함수 인자 값 패킹
-# * : 튜플 타입
-# ** : 사전 타입
-# var-positional: 나열한 값들이 알아서 각 변수에 패킹되어 대입됨
+# [ 가변 인자 리스트 활용 ]: 열거된 매개변수 -> 함수 인자 값 패킹
+# *: 튜플 타입
+# **: 사전 타입
+# var-positional: 나열한 값들이 알아서 각 변수에 Packing되어 대입됨
 def introduce_family(name, *family_names, **family_info):
     print("제 이름은 {}입니다.".format(name))
     print("제 가족들의 이름은...")
@@ -45,9 +45,9 @@ def concat(*args, sep="/"):
 print(concat("earth", "mars", "venus"))
 print(concat("earth", "mars", "venus", sep=","))
 
-# [ 언패킹 인자 리스트 활용 ] : 열거형 데이터 -> 함수 인자로 언패킹
-# * : 튜플 타입 언패킹
-# ** : 사전 타입 언패킹
+# [ 언패킹 인자 리스트 활용 ]: 열거형 데이터 -> 함수 인자로 언패킹
+# *: 튜플 타입 언패킹
+# **: 사전 타입 언패킹
 args1 = [3, 6]
 args1_tup = (3, 6)
 print(list(range(*args1)))

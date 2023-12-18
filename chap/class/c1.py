@@ -12,11 +12,17 @@ print(f"class = {var.__class__}, replace = {var.replace('Python', '파이썬')}"
 class BookReader:
     name = str()
 
+    def __str__(self) -> str:
+        return "BookReader Class"
+
     def read_book(self):
         print(f"{self.name} is reading book!!")
 
     class Reader:
         nme = str()
+
+        def __str__(self) -> str:
+            return "Reader Class"
 
         def read(self):
             print(f"{self.nme} : hi")
@@ -24,7 +30,10 @@ class BookReader:
 
 # __main__: 현재 클래스가 생성된 위치를 나타냄 (파이썬 실행의 최상단 레벨의 코드에서 실행되었다는 의미)
 # __main__에 속한 클래스는 전역에서 호출이 가능하다.
-reader = BookReader()
-print(type(reader))     # <class '__main__.BookReader'>
-reader.name = 'Chris'
-reader.read_book()
+book_reader = BookReader()
+reader = BookReader.Reader()
+print(f"type = {type(book_reader)}, __str__ = {book_reader.__str__()}")
+print(f"type = {type(reader)}, __str__ = {reader.__str__()}")
+
+book_reader.name = 'Chris'
+book_reader.read_book()

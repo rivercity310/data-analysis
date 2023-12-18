@@ -14,6 +14,8 @@ param = "Create from Outside"
 test_func()
 print("param = {}, id = {}".format(param, id(param)))
 
+del param  # 기존 param 변수 삭제
+
 
 # Test 2.
 # 이 경우에는 전역변수 param을 함수 내부에서 출력하고 있다. (동일한 객체 식별자 값)
@@ -21,10 +23,10 @@ def test_func2():
     print("param = {}, id = {}".format(param, id(param)))
 
 
-del param    # 기존 param 변수 삭제
 param = "Create from Outside"
 test_func2()
 print("param = {}, id = {}".format(param, id(param)))
+del param
 
 
 # Test 3.
@@ -32,31 +34,30 @@ print("param = {}, id = {}".format(param, id(param)))
 # 파이썬에서는 함수 내에서 어떤 변수에 값을 할당하는 경우, 할당하는 위치와 상관 없이 무조건 지역 변수로 인식한다.
 # 즉 test_func3의 첫번째 라인에서 param 변수를 아직 생성하지 않은 지역 변수라고 인식하는 것. (다른 언어와의 차이점)
 def test_func3():
-    print(param)    # UnBoundLocalError
+    print(param)  # UnBoundLocalError
     param = "Modified by test_func3"
     print(id(param))
 
 
-del param
 param = "Create from Outside"
 
 try:
     test_func3()
-except UnboundLocalError:
+except UnboundLocalError as err:
     print("error")
 finally:
     print("param = {}, id = {}".format(param, id(param)))
+    del param
 
 
 # Test 4.
 # 함수 내에서 호출한 param 변수가 전역 변수임을 알려주는 키워드 global을 사용
 def test_func4():
     global param
-    param = "Modified by test_func4"
+    param = "Modified by test_func4"  # 여기서 객체 식별자 값 변경됨
     print("param = {}, id = {}".format(param, id(param)))
 
 
-del param
 param = "Create from Outside"
 print("param = {}, id = {}".format(param, id(param)))
 test_func4()
@@ -65,12 +66,12 @@ print("param = {}, id = {}".format(param, id(param)))
 
 # 함수 중첩 시 변수 Scope 구분
 # 외부 함수와 내부 함수 사이에서 생겨나는 nonlocal/enclosing 범위
-
 # outer(), inner() 입장에서 전역(global) 범위
 def outer():
     # outer() 입장에서 지역(local) 범위
     # inner() 입장에서 비지역(nonlocal) 범위
     num = 0     # inner() 함수 입장에서 비지역 변수 num
+
     def inner():
         # inner() 입장에서 지역(local) 범위
         nonlocal num

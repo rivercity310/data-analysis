@@ -8,15 +8,15 @@
 # 2. empty_list = list()
 
 # [ 리스트 타입 함수 ]
-# append() : 리스트 끝에 값 추가
-# remove(val) : 리스트 내 특정 값 삭제
-# insert(idx, val) : idx 위치에 val 삽입
-# pop(idx) : idx 위치의 값을 제거하고 해당 값 반환, idx를 주지 않으면 마지막 위치 값 제거 후 반환
+# append(): 리스트 끝에 값 추가
+# remove(val): 리스트 내 특정 값 삭제
+# insert(idx, val): idx 위치에 val 삽입
+# pop(idx): idx 위치의 값을 제거하고 해당 값 반환, idx를 주지 않으면 마지막 위치 값 제거 후 반환
 
 # [ 리스트 슬라이싱 ]
-# 변수명[start:end] : 리스트 타입 변수의 start 색인부터 end-1 색인까지 슬라이싱
-# shallow copy : 리스트 변수를 다른 변수에 그대로 할당 -> 객체 식별자 값 공유, 한 변수의 값 변경 시 다른 변수에도 영향을 미침
-# deep copy : pockets_copy = pockets[:] -> 서로 다른 객체 식별자 값, 메모리 상에서 독립적으로 존재
+# 변수명[start:end]: 리스트 타입 변수의 start 색인부터 end-1 색인까지 슬라이싱
+# shallow copy: 리스트 변수를 다른 변수에 그대로 할당 -> 객체 식별자 값 공유, 한 변수의 값 변경 시 다른 변수에도 영향을 미침
+# deep copy: pockets_copy = pockets[:] -> 서로 다른 객체 식별자 값, 메모리 상에서 독립적으로 존재
 lst = [5]
 shallow_copy = lst
 shallow_copy.append(3)
@@ -68,3 +68,9 @@ A = ['blue', 'green', 'red']
 B = ['red', 'green', 'blue']
 pairs = [(a, b) for a in A for b in B if a != b]
 print(pairs)
+
+for idx, item in enumerate(pairs):
+    print(f"{idx}: {item}")
+
+for idx, item in enumerate(zip(A, B)):
+    print(f"{idx}: {item}")
