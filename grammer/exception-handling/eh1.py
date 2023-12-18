@@ -55,4 +55,3 @@ if __name__ == "__main__":
     # exception_test2("../logging/python.log")
     # exception_test2("../logging/python2.log")
     exception_test3()
-    
