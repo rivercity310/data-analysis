@@ -61,8 +61,18 @@ def exception_test3():
     print("숫자 {} 입력!".format(num))
 
 
+def exception_test4():
+    with open("C:/Users/seungsu/Desktop/employment/report.pdf", "rb") as f:
+        print(len(f.readlines()))
+        f.seek(0, 0)
+
+        with open("C:/Users/seungsu/Desktop/report2.pdf", "wb") as fw:
+            fw.writelines(f.readlines())
+
+
 if __name__ == "__main__":
     # exception_test()
-    # exception_test2("../logging/python.log")
-    # exception_test2("../logging/python2.log")
-    exception_test3()
+    # exception_test2("../log/python.log")
+    # exception_test2("../log/python2.log")
+    # exception_test3()
+    exception_test4()
