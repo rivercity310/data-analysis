@@ -6,7 +6,7 @@
 import logging.config   # 로깅 설정 모듈
 
 # 설정 파일 읽어오기
-logging.config.fileConfig("./logging.conf")
+logging.config.fileConfig("../../logging.conf")
 
 # 로거 생성
 logger = logging.getLogger(__name__)
