@@ -2,22 +2,23 @@ from selenium import webdriver
 from selenium.webdriver.common.by import By
 
 
-user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+DEFAULT_PATH = "D:\\selenium\\"
 
 
-def get_chrome_driver(bypass: bool = False) -> webdriver.Chrome:
+def get_chrome_driver(bypass: bool = False, download: bool = False) -> webdriver.Chrome:
     """ Chrome Driver 생성, 옵션 설정
 
     :param bypass: IP 우회 옵션 설정
+    :param download: 다운로드 기능 ON/OFF
 
     :return: Chrome Driver 객체
     """
-    chrome_options = _set_selenium_options(bypass)
+    chrome_options = _set_selenium_options(bypass, download)
     driver = webdriver.Chrome(options=chrome_options)
     return driver
 
 
-def _set_selenium_options(bypass: bool = False) -> webdriver.ChromeOptions:
+def _set_selenium_options(bypass: bool = False, download: bool = False) -> webdriver.ChromeOptions:
     """ Selenium 옵션을 설정하고, 설정값을 담고있는 ChromeOptions 객체 반환
 
     :return: 설정된 Chrome 옵션 객체
@@ -36,7 +37,15 @@ def _set_selenium_options(bypass: bool = False) -> webdriver.ChromeOptions:
         options.add_argument("--proxy-server=socks5://127.0.0.1:9150")  # IP 우회
         options.add_argument("incognito")       # Secret 모드
     else:
+        user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
         options.add_argument(f"User-Agent={user_agent}")    # User-Agent 설정
+
+    if download:
+        options.add_experimental_option("prefs", {
+            "download.default_directory": DEFAULT_PATH[:-2],
+            "download.prompt_for_download": False,
+            "download.directory_upgrade": True,
+        })
 
     return options
 
