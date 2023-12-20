@@ -21,6 +21,7 @@ if driver:
         for page_index, page_number_elem in enumerate(page_numbers_elem):
             page_number_elem.click()
             driver.implicitly_wait(3)
+
             me = driver.find_elements(by=By.CLASS_NAME, value="gen-movie-info")
             mi = driver.find_elements(by=By.CLASS_NAME, value="gen-movie-img")
 
@@ -38,6 +39,7 @@ if driver:
 
                 with open(file_path, "wb") as f:
                     res = requests.get(src)
+
                     if res.status_code == requests.codes.OK:
                         print(f"{alt}: {src}")
                         f.write(res.content)
@@ -47,7 +49,6 @@ if driver:
             # page 정보 Scrapping
             page_raw_info = "{}cp_{}_{}_{}.{}"
             page_info_path = page_raw_info.format(DEFAULT_PATH, domain, "info", page_index, "txt")
-            print(page_info_path)
             remove_list.append(page_info_path)
 
             with open(page_info_path, "wt") as f:
@@ -59,16 +60,16 @@ if driver:
                     f.writelines("\n")
 
             page_screenshot_path = page_raw_info.format(DEFAULT_PATH, domain, "screenshot", page_index, "png")
-            print(page_screenshot_path)
             driver.get_screenshot_as_file(page_screenshot_path)
             remove_list.append(page_screenshot_path)
 
-            print("-"*100)
+            print("-" * 100)
 
     except Exception as e:
         logging.config.fileConfig("../../logging.conf")
         logger = logging.getLogger(__name__)
         logger.critical(e)
+
     finally:
         driver.delete_network_conditions()
         driver.delete_all_cookies()
@@ -76,3 +77,5 @@ if driver:
 
         for remv in remove_list:
             os.remove(remv)
+
+        del remove_list

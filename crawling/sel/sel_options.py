@@ -5,29 +5,34 @@ from selenium.webdriver.common.by import By
 DEFAULT_PATH = "D:\\selenium\\"
 
 
-def get_chrome_driver(bypass: bool = False, download: bool = False) -> webdriver.Chrome:
+def get_chrome_driver(
+        bypass: bool = False,
+        download: bool = False,
+        headless: bool = False
+) -> webdriver.Chrome:
     """ Chrome Driver 생성, 옵션 설정
 
     :param bypass: IP 우회 옵션 설정
     :param download: 다운로드 기능 ON/OFF
+    :param headless: Background 동작 ON/OFF
 
     :return: Chrome Driver 객체
     """
-    chrome_options = _set_selenium_options(bypass, download)
+    chrome_options = _set_selenium_options(bypass, download, headless)
     driver = webdriver.Chrome(options=chrome_options)
     return driver
 
 
-def _set_selenium_options(bypass: bool = False, download: bool = False) -> webdriver.ChromeOptions:
+def _set_selenium_options(bypass: bool, download: bool, headless: bool) -> webdriver.ChromeOptions:
     """ Selenium 옵션을 설정하고, 설정값을 담고있는 ChromeOptions 객체 반환
+
+    :param bypass: IP 우회 ON/OFF
+    :param download: File Download 기능 ON/OFF
+    :param headless: Background 동작 ON/OFF
 
     :return: 설정된 Chrome 옵션 객체
     """
     options = webdriver.ChromeOptions()
-
-    # headless 옵션 설정
-    options.add_argument("headless")        # 브라우저가 뜨지 않고 실행됨 (Background 실행)
-    options.add_argument("no-sandbox")
 
     options.add_argument("window-size=1920x1080")       # 브라우저 윈도우 사이즈 설정
     options.add_argument("disable-gpu")                 # 가속 사용 X
@@ -46,6 +51,11 @@ def _set_selenium_options(bypass: bool = False, download: bool = False) -> webdr
             "download.prompt_for_download": False,
             "download.directory_upgrade": True,
         })
+
+    if headless:
+        # headless 옵션 설정
+        options.add_argument("headless")  # 브라우저가 뜨지 않고 실행됨 (Background 실행)
+        options.add_argument("no-sandbox")
 
     return options
 
