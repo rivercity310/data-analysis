@@ -6,6 +6,8 @@ import time
 import json
 
 
+# 3:15:00
+
 GET_PATH = "http://naver.com"
 LOGIN_BTN_XPATH = "//*[@id=\"account\"]/div/a"
 LOGGING_CONF_PATH = "../../logging.conf"
