@@ -31,8 +31,5 @@ def ex1():
     print(match_obj.groups())                           # 캡쳐된 부분 전체를 튜플 형식으로 반환 -> ('07', '28')
 
 
-
-
-
 if __name__ == "__main__":
     ex1()
