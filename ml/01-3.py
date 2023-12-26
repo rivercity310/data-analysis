@@ -5,8 +5,11 @@ from sklearn.neighbors import KNeighborsClassifier
 # 모델: ML 알고리즘을 구현한 프로그램 또는 구체화하여 표현한 것
 
 # [ K-최근접 이웃 알고리즘(K-Nearest Neighbors) / 모델 ]
-# - 어떤 데이터에 대한 답을 구할 때 주위의 다른 데이터를 보고 다수를 차지하는 것을 정답으로
-# - 점과 점사이의 거리, 참고할 데이터 개수 지정 가능(n_neighbors, Default 5)
+# - 어떤 데이터에 대한 답을 구할 때 주위의 다른 데이터를 보고 다수를 차지하는 것을 정답으로 판단
+# - KNeighborsClassifier() 생성자
+#       1. n_neighbors: 이웃의 개수 (기본값 5)
+#       2. p: 거리를 재는 방법 (1: 맨해튼 거리, 2: 유클리디안 거리, 기본값 2)
+#       3. n_jobs: 사용할 CPU 코어 (-1: 모든 코어 사용, 기본값 1), fit() 메서드에는 영향 없고 거리 계산 속도만 향상
 # - 단점
 #       1. 데이터가 많을 경우 메모리 사용이 크고 시간이 오래 걸림
 #       2. kn._fit_X, kn._y 속성에 전달한 data를 다 들고있음
@@ -26,6 +29,12 @@ smelt_length = [9.8, 10.5, 10.6, 11.0, 11.2, 11.3,
 smelt_weight = [6.7, 7.5, 7.0, 9.7, 9.8, 8.7, 10.0,
                 9.9, 9.8, 12.2, 13.4, 12.2, 19.7, 19.9]
 
+length = bream_length + smelt_length
+weight = bream_weight + smelt_weight
+
+fish_data = [[l, w] for l, w in zip(length, weight)]
+fish_target = [1] * 35 + [0] * 14
+
 
 # 1. 주어진 데이터에 대해 matplotlib을 이용하여 산점도 그리기
 def ex1():
@@ -42,18 +51,24 @@ def ex1():
 
 
 def ex2():
-    length = bream_length + smelt_length
-    weight = bream_weight + smelt_weight
-
-    fish_data = [[l, w] for l, w in zip(length, weight)]
-    fish_target = [1] * 35 + [0] * 14
-
     # kn 객체에 fish_data와 fish_target을 전달하여 기준을 학습(training)시킴
     kn = KNeighborsClassifier()
     kn.fit(fish_data, fish_target)                 # fit(): 주어진 데이터로 알고리즘을 훈련
-    print(kn.score(fish_data, fish_target))        # score(): 모델을 평가 (정확도)
+    print(kn.score(fish_data, fish_target))        # score(): 모델을 평가 (정확도 = (맞힌 갯수) / (전체 개수))
     print(kn.predict([[30, 600]]))                 # predict(): 새로운 데이터의 정답을 예측
+
+    # 전달한(학습시킨) 데이터를 내부적으로 들고있기 때문에 메모리 사용량이 크다는 단점
+    print(kn._fit_X)
+    print(kn._y)
+
+
+def ex3():
+    kn = KNeighborsClassifier(n_neighbors=49, n_jobs=-1, p=1)
+    kn.fit(fish_data, fish_target)
+
+    print(kn.score(fish_data, fish_target))         # 정확도: 35/49 = 0.714..
+    print(kn.predict([[30, 600]]))
 
 
 if __name__ == "__main__":
-    ex2()
+    ex3()
