@@ -70,5 +70,17 @@ def ex3():
     print(kn.predict([[30, 600]]))
 
 
+def ex4():
+    kn = KNeighborsClassifier()
+    kn.fit(fish_data, fish_target)
+
+    for n in range(5, 50):
+        kn.n_neighbors = n
+        score = kn.score(fish_data, fish_target)
+
+        if score < 1:
+            print(n, score)
+
+
 if __name__ == "__main__":
-    ex3()
+    ex4()
