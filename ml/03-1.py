@@ -6,12 +6,16 @@
 # [K-최근접 이웃 분류]: 샘플에 가장 가까운 K개를 골라 다수에 해당하는 클래스로 해당 샘플을 예측
 # [K-최근접 이웃 회귀]: 샘플에 가장 가까운 K개의 수치를 평균 내어 값 예측 
 import matplotlib.pyplot as plt
+from sample import Sample
 from sklearn.neighbors import KNeighborsRegressor
 from sklearn.metrics import mean_absolute_error
-from sample import get_sample_data, perch_length, perch_weight
 
 
-train_input, test_input, train_target, test_target = get_sample_data()
+sample = Sample()
+
+train_input, test_input, train_target, test_target = sample.get_sample_data()
+perch_length, perch_weight = sample.get_perch_data()
+
 
 # 주어진 데이터의 형태를 파악하기 위해 산점도 그려보기
 def ex1():
@@ -31,16 +35,27 @@ def ex2():
     # 값이 높을수록 좋음
     print(knr.score(test_input, test_target))
 
-    # mean_absolute_error
-    # 타깃과 예측의 절댓값 오차평균 반환
+    # MAE(mean_absolute_error, 평균절대오차)
+    # - 타깃과 예측의 절댓값 오차평균 반환
+    # - 손실함수 E = sigma(abs(yi - y2i))
+    #   - yi = i번째 학습 데이터의 정답, y2i = i번째 학습 데이터로 예측한 값 
 
     # 1. 테스트 세트에 대한 예측 만들기
     test_prediction = knr.predict(test_input)
+    print(f"test_target: {test_target}")
+    print(f"test_prediction: {test_prediction}")
 
+    abs_sum = 0
+
+    for target_score, predict_score in zip(test_target, test_prediction):
+        abs_sum += abs(target_score - predict_score)
+        
     # 2. 테스트 세트에 대한 평균 절댓값 오차 계산
     # -> 즉, 예측값이 평균적으로 {mae}값만큼 타깃값과 다르다
     mae = mean_absolute_error(test_target, test_prediction)
-    print(mae)
+    print(f"MAE: {mae}")
+    print(f"abs_sum: {abs_sum / len(test_target)}")
+    print(mae == abs_sum / len(test_target))        # True
 
 
 # 과대적합 vs 과소적합
@@ -75,4 +90,4 @@ def ex3():
 
 
 if __name__ == "__main__":
-    ex3()
+    ex2()
