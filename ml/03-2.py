@@ -96,6 +96,7 @@ def ex3():
 
 
 def ex4():
+    pass
 
 
 if __name__ == "__main__":

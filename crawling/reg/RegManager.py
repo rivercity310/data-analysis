@@ -25,6 +25,8 @@ class RegReader:
         print(f"[{fun_name}] {self._key_path} 아래 {query_info_key[0]}개의 서브 키가 존재합니다.")
         print(f"[{fun_name}] {self._key_path} {query_info_key[1]}개의 값을 포함합니다.")
 
+        
+
 
 if __name__ == "__main__":
     rr = RegReader()
