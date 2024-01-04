@@ -6,6 +6,7 @@
 
 import os
 import hashlib
+import time
 
 
 class HashManager:
@@ -22,7 +23,7 @@ class HashManager:
         self.text_file_path = self._default_path + "\\" + "hash.txt"
 
         if os.path.exists(self.text_file_path):
-            print("기존 hash.txt 파일을 삭제합니다...")
+            self.title_print("기존 hash.txt 파일을 삭제합니다")
             os.remove(self.text_file_path)
 
     
@@ -54,7 +55,7 @@ class HashManager:
             self.hash_result_list.append((dir, file, md5, sha256))
         
         del self.file_path_list
-        print("모든 파일에 대한 해시 정보 추출이 완료되었습니다.")
+        self.title_print("모든 파일에 대한 해시 정보 추출이 완료되었습니다")
 
     
     def write_result_on_text_file(self):
@@ -76,19 +77,39 @@ class HashManager:
     def remove_text_file(self):
         if os.path.exists(self.text_file_path):
             os.remove(self.text_file_path)
-            print("hash.txt 파일을 성공적으로 제거하였습니다.")
+            self.title_print("hash.txt 파일을 성공적으로 제거하였습니다.")
 
         else:
-            print("이미 제거되었거나 해당 파일이 존재하지 않습니다.")
-            
+            self.title_print("이미 제거되었거나 해당 파일이 존재하지 않습니다.")
+
+
+    def run(self):
+        self.title_print("탐색을 시작합니다")
+        time.sleep(1)
+        hm.start()
+
+        self.title_print("해시값을 추출합니다")
+        time.sleep(1)
+        hm.load_hash_value()
+        hm.write_result_on_text_file()        
+
+        self.title_print("결과 파일을 출력합니다")
+        time.sleep(2)
+        with open(self.text_file_path, "r", encoding="utf8") as fp:
+            print(fp.read())
+        self.title_print("")
+
+        res = input("\n\n결과 파일을 삭제할까요?(y/n) ")
+
+        if res == "y":
+            hm.remove_text_file()
+    
+    
+    def title_print(self, msg):
+        print("\n")
+        print("-" * 50 + msg + "-" * 50)
+
 
 if __name__ == "__main__":
     hm = HashManager()
-    hm.start()
-    hm.load_hash_value()
-    hm.write_result_on_text_file()        
-
-    res = input("결과 파일을 삭제할까요?(y/n) ")
-
-    if res == "y":
-        hm.remove_text_file()
+    hm.run()
