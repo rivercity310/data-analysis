@@ -59,8 +59,9 @@ class HashManager:
 
     
     def write_result_on_text_file(self):
+        tmp = ""
+
         for dir, file, md5, sha256 in self.hash_result_list:
-            tmp = ""
             file_size = os.path.getsize(dir + "\\" + file)
 
             tmp += "----------------------------------\n"
@@ -70,8 +71,12 @@ class HashManager:
             tmp += f"sha256: {sha256}\n"
             tmp += "----------------------------------\n\n"
 
-            with open(self.text_file_path, "at", encoding="utf8") as fp:
-                fp.write(tmp)
+            # 1000자 이상일 때만 파일 I/O
+            if len(tmp) > 1000:
+                with open(self.text_file_path, "at", encoding="utf8") as fp:
+                    fp.write(tmp)
+
+                tmp = ""
 
 
     def remove_text_file(self):
