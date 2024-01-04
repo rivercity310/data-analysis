@@ -13,8 +13,7 @@ class HashManager:
     # 해당 파일의 파일명, MD5, SHA256, 파일크기를 추출하고
     # _default_path 경로에 hash.txt 파일을 생성하여 추출 정보를 기록합니다.
     # 혹은 self.text_file_path를 수정하여 원하는 위치에 hash.txt 파일을 저장할 수 있습니다.
-
-    _default_path = "C:\\Program Files\\Git"
+    _default_path = r"C:\Users\seungsu\Desktop\employment"
 
     def __init__(self):
         self.file_dir_list = os.listdir(self._default_path)
@@ -74,8 +73,22 @@ class HashManager:
                 fp.write(tmp)
 
 
+    def remove_text_file(self):
+        if os.path.exists(self.text_file_path):
+            os.remove(self.text_file_path)
+            print("hash.txt 파일을 성공적으로 제거하였습니다.")
+
+        else:
+            print("이미 제거되었거나 해당 파일이 존재하지 않습니다.")
+            
+
 if __name__ == "__main__":
     hm = HashManager()
     hm.start()
     hm.load_hash_value()
     hm.write_result_on_text_file()        
+
+    res = input("결과 파일을 삭제할까요?(y/n) ")
+
+    if res == "y":
+        hm.remove_text_file()
