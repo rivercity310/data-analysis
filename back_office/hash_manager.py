@@ -14,7 +14,7 @@ class HashManager:
     # 해당 파일의 파일명, MD5, SHA256, 파일크기를 추출하고
     # _default_path 경로에 hash.txt 파일을 생성하여 추출 정보를 기록합니다.
     # 혹은 self.text_file_path를 수정하여 원하는 위치에 hash.txt 파일을 저장할 수 있습니다.
-    _default_path = r"C:\Users\seungsu\Desktop\employment"
+    _default_path = r"C:\Program Files\Git"
 
     def __init__(self):
         self.file_dir_list = os.listdir(self._default_path)
