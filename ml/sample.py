@@ -14,14 +14,13 @@ class Sample:
         
         with open(json_file_path, encoding="utf8") as f:
             json_obj = json.load(f)    
-            self.perch_length = json_obj["perch_length"]
-            self.perch_weight = json_obj["perch_weight"]
-            self.bream_length = json_obj["bream_length"]
-            self.bream_weight = json_obj["bream_weight"]
-            self.smelt_length = json_obj["smelt_length"]
-            self.smelt_weight = json_obj["smelt_weight"]
-
-        print("샘플 데이터 로딩이 안료되었습니다....")
+            self.perch_length = np.array(json_obj["perch_length"])
+            self.perch_weight = np.array(json_obj["perch_weight"])
+            self.bream_length = np.array(json_obj["bream_length"])
+            self.bream_weight = np.array(json_obj["bream_weight"])
+            self.smelt_length = np.array(json_obj["smelt_length"])
+            self.smelt_weight = np.array(json_obj["smelt_weight"])
+            print("샘플 데이터 로딩이 안료되었습니다....")
 
 
     def get_perch_data(self):

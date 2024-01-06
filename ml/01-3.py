@@ -1,6 +1,8 @@
 import matplotlib.pyplot as plt
+import numpy as np
 from sklearn.neighbors import KNeighborsClassifier
 from sample import Sample
+
 
 # Machine Learning: 스스로 기준을 찾아서 일을 진행
 # 모델: ML 알고리즘을 구현한 프로그램 또는 구체화하여 표현한 것
@@ -15,15 +17,13 @@ from sample import Sample
 #       1. 데이터가 많을 경우 메모리 사용이 크고 시간이 오래 걸림
 #       2. kn._fit_X, kn._y 속성에 전달한 data를 다 들고있음
 # - 즉, 전달한 데이터를 모두 들고 있다가 새로운 데이터가 등장하면 이웃 거리를 계산하여 정답 예측
-
-
-class KNeighborsEx:
+class KNeighbors_01_3_Ex:
     def __init__(self):
         sample = Sample()
         self.bream_length, self.bream_weight, self.smelt_length, self.smelt_weight = sample.get_bream_smelt_data()
      
-        length = self.bream_length + self.smelt_length
-        weight = self.bream_weight + self.smelt_weight
+        length = np.append(self.bream_length, self.smelt_length)
+        weight = np.append(self.bream_weight, self.smelt_weight)
      
         self.fish_data = [[l, w] for l, w in zip(length, weight)]
         self.fish_target = [1] * 35 + [0] * 14
@@ -74,6 +74,6 @@ class KNeighborsEx:
 
 
 if __name__ == "__main__":
-    kn = KNeighborsEx()
+    kn = KNeighbors_01_3_Ex()
     kn.ex4()
     
