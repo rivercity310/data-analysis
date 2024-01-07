@@ -16,6 +16,7 @@ class Sample:
     smelt_length = "smelt_length"
     smelt_weight = "smelt_weight"
     perch_full = "perch_full"
+    fish_full = "fish_full"
 
     def __init__(self):
         if not os.path.exists(self._json_file_path):
@@ -87,6 +88,35 @@ class Sample:
         return perch_full_data, perch_weight_data
 
 
+    def read_remote_fish_data(self):
+        if self.fish_full not in self.json_obj:
+            fish = pd.read_csv("https://bit.ly/fish_csv_data")
+            fish_dict = dict()
+
+            for col in fish.columns:
+                fish_dict[col] = list(fish[col].to_numpy())
+
+            self.json_obj[self.fish_full] = fish_dict
+
+            with open(self._json_file_path, "w", encoding="utf8") as fp:
+               json.dump(self.json_obj, fp, sort_keys = True, indent = 4)
+
+        fish_full = self.json_obj[self.fish_full]
+
+        fish_input = np.column_stack((
+            fish_full["Weight"],
+            fish_full["Length"],
+            fish_full["Diagonal"],
+            fish_full["Height"],
+            fish_full["Width"]
+        ))
+
+        fish_target = np.array(fish_full['Species'])
+
+        return fish_input, fish_target
+
+
 if __name__ == "__main__":
     sp = Sample()
-    print(sp.read_remote_perch_data())
+    # print(sp.read_remote_perch_data())
+    print(sp.read_remote_fish_data())
