@@ -1,4 +1,5 @@
 import numpy as np
+import pandas as pd
 import json
 import os
 from sklearn.model_selection import train_test_split
@@ -53,7 +54,15 @@ class Sample:
         fish_weight = np.append(self.bream_weight, self.smelt_weight)
 
         return fish_length, fish_weight
+    
 
+    def read_remote_perch_data(self):
+        df = pd.read_csv("https://bit.ly/perch_csv_data")
+        perch_full = df.to_numpy()
+
+        return perch_full, self.perch_weight
+    
 
 if __name__ == "__main__":
     sp = Sample()
+    sp.read_remote_perch_data()
