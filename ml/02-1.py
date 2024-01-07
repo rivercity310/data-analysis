@@ -32,6 +32,8 @@ class KNeighbors_02_1_Ex:
     def __init__(self):
         sample = Sample()
         self.fish_length, self.fish_weight = sample.get_fish_data()
+        
+        # 추후 numpy의 column_stack(), concatenate(), ones(), zeros()로 대체
         self.fish_data = [[l, w] for l, w in zip(self.fish_length, self.fish_weight)]
         self.fish_target = [1] * 35 + [0] * 14
     
@@ -52,7 +54,8 @@ class KNeighbors_02_1_Ex:
         print(kn.score(test_input, test_target))   # 0.0
 
 
-    # 무작위로 섞인 인덱스를 통해 샘플 섞기  
+    # 무작위로 섞인 인덱스를 통해 샘플 섞기
+    # 추후 train_test_split()으로 대체
     def ex2(self):
         np.random.seed(42)  # 랜덤 시드 설정
         index = np.arange(len(self.fish_length))
