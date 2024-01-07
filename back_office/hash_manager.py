@@ -14,7 +14,13 @@ class HashManager:
     # 해당 파일의 파일명, MD5, SHA256, 파일크기를 추출하고
     # _default_path 경로에 hash.txt 파일을 생성하여 추출 정보를 기록합니다.
     # 혹은 self.text_file_path를 수정하여 원하는 위치에 hash.txt 파일을 저장할 수 있습니다.
-    _default_path = r"C:\Program Files\Git"
+    _default_path = "C:\\Users\\seungsu\\Desktop\\materials"
+    
+    # 전체 폴더를 탐색하게 설계되었으므로 
+    # 만일 탐색하고 싶지 않은 폴더/파일이 있다면 이곳에 추가
+    _ignore_folders = ["icons"]
+    _ignore_files = ["CentOS-Stream-8-x86_64-latest-dvd1.iso"]
+
 
     def __init__(self):
         self.file_dir_list = os.listdir(self._default_path)
@@ -28,14 +34,22 @@ class HashManager:
 
     
     def start(self, path = _default_path):
-        if os.path.isfile(path) or path.endswith(".msp"):
+        if os.path.isfile(path):
             dir, file = os.path.split(path)
+
+            if file in self._ignore_files:
+                return
+            
             self.file_path_list.append((dir, file))
             print(f"\t파일 발견: {path}")
             return
         
         # 폴더면 한 뎁스 더 들어간다
         list_dir = os.listdir(path)
+        dir, file = os.path.split(path)
+
+        if file in self._ignore_folders:
+            return
 
         for f in list_dir:
             print(f"현재 경로: {path}")
@@ -89,25 +103,32 @@ class HashManager:
 
 
     def run(self):
-        self.title_print("탐색을 시작합니다")
-        time.sleep(1)
-        hm.start()
+        try:
+            self.title_print("탐색을 시작합니다")
+            time.sleep(1)
+            hm.start()
 
-        self.title_print("해시값을 추출합니다")
-        time.sleep(1)
-        hm.load_hash_value()
-        hm.write_result_on_text_file()        
+            self.title_print("해시값을 추출합니다")
+            time.sleep(1)
+            hm.load_hash_value()
+            hm.write_result_on_text_file()        
 
-        self.title_print("결과 파일을 출력합니다")
-        time.sleep(2)
-        with open(self.text_file_path, "r", encoding="utf8") as fp:
-            print(fp.read())
-        self.title_print("")
+            self.title_print("결과 파일을 출력합니다")
+            time.sleep(2)
+            with open(self.text_file_path, "r", encoding="utf8") as fp:
+                print(fp.read())
+            self.title_print("")
 
-        res = input("\n\n결과 파일을 삭제할까요?(y/n) ")
+            res = input("\n\n결과 파일을 삭제할까요?(y/n) ")
 
-        if res == "y":
-            hm.remove_text_file()
+            if res == "y":
+                hm.remove_text_file()
+        
+        except Exception as e:
+            print(e)
+        
+        finally:
+            del self
     
     
     def title_print(self, msg):
