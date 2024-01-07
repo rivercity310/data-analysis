@@ -41,6 +41,7 @@ class KNeighbors_01_3_Ex:
         plt.show()
 
 
+    # Warning: 훈련에 사용한 데이터로 모델을 평가 -> 테스트 세트를 사용해야 됨 
     def ex2(self):
         # kn 객체에 fish_data와 fish_target을 전달하여 기준을 학습(training)시킴
         kn = KNeighborsClassifier()

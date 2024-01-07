@@ -5,22 +5,27 @@ from sklearn.model_selection import train_test_split
 
 
 class Sample:
-    def __init__(self):
-        json_file_path = r"C:\Users\seungsu\Desktop\projects\unittest\ml\data.json"
+    _json_file_path = r"C:\Users\seungsu\Desktop\projects\unittest\ml\data.json"
 
-        if not os.path.exists(json_file_path):
-            print(f"해당 파일을 찾을 수 없습니다. path: {json_file_path}")
+    def __init__(self):
+        if not os.path.exists(self._json_file_path):
+            print(f"해당 파일을 찾을 수 없습니다. path: {self._json_file_path}")
             return
         
-        with open(json_file_path, encoding="utf8") as f:
+        with open(self._json_file_path, encoding="utf8") as f:
             json_obj = json.load(f)    
-            self.perch_length = np.array(json_obj["perch_length"])
-            self.perch_weight = np.array(json_obj["perch_weight"])
-            self.bream_length = np.array(json_obj["bream_length"])
-            self.bream_weight = np.array(json_obj["bream_weight"])
-            self.smelt_length = np.array(json_obj["smelt_length"])
-            self.smelt_weight = np.array(json_obj["smelt_weight"])
-            print("샘플 데이터 로딩이 안료되었습니다....")
+
+            for key, val in json_obj.items():
+                json_obj[key] = np.array(val)
+
+            self.perch_length = json_obj["perch_length"]
+            self.perch_weight = json_obj["perch_weight"]
+            self.bream_length = json_obj["bream_length"]
+            self.bream_weight = json_obj["bream_weight"]
+            self.smelt_length = json_obj["smelt_length"]
+            self.smelt_weight = json_obj["smelt_weight"]
+
+        print("샘플 데이터 로딩이 안료되었습니다....")
 
 
     def get_perch_data(self):
@@ -41,6 +46,13 @@ class Sample:
     
     def get_bream_smelt_data(self):
         return self.bream_length, self.bream_weight, self.smelt_length, self.smelt_weight
+
+
+    def get_fish_data(self):
+        fish_length = np.append(self.bream_length, self.smelt_length)
+        fish_weight = np.append(self.bream_weight, self.smelt_weight)
+
+        return fish_length, fish_weight
 
 
 if __name__ == "__main__":
