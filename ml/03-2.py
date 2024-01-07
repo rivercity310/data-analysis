@@ -23,7 +23,7 @@ class LinearRegression_03_2_Ex:
         print(knr.predict([[70]]))
 
         # kneighbors(): 가장 가까운 이웃까지의 거리와 샘플의 인덱스 구하기
-        distances, indexes = knr.kneighbors([[50]]) # 50cm 농어의 이웃 구하기
+        _distances, indexes = knr.kneighbors([[50]]) # 50cm 농어의 이웃 구하기
 
         plt.scatter(self.train_input, self.train_target)
         plt.scatter(self.train_input[indexes], self.train_target[indexes], marker='D')

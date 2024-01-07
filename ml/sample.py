@@ -34,7 +34,9 @@ class Sample:
 
     def get_sample_data(self):
         train_input, test_input, train_target, test_target = train_test_split(
-            self.json_obj[self.perch_length], self.json_obj[self.perch_weight], random_state=42
+            np.array(self.json_obj[self.perch_length]),
+            np.array(self.json_obj[self.perch_weight]), 
+            random_state = 42
         )
     
         # 훈련 세트는 2차원 배열이여야 하므로 shape 변경
@@ -78,9 +80,13 @@ class Sample:
             with open(self._json_file_path, "w", encoding="utf8") as fp:
                 json.dump(self.json_obj, fp, sort_keys = True, indent = 4)
 
-        return self.json_obj[self.perch_full], self.json_obj[self.perch_weight]
+        perch_dict = self.json_obj[self.perch_full]
+        perch_full_data = np.column_stack((perch_dict["length"], perch_dict["height"], perch_dict["width"]))
+        perch_weight_data = np.array(self.json_obj[self.perch_weight])
+
+        return perch_full_data, perch_weight_data
 
 
 if __name__ == "__main__":
     sp = Sample()
-    sp.read_remote_perch_data()
+    print(sp.read_remote_perch_data())
