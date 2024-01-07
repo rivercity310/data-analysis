@@ -7,6 +7,15 @@ from sklearn.model_selection import train_test_split
 
 class Sample:
     _json_file_path = r"C:\Users\seungsu\Desktop\projects\unittest\ml\data.json"
+    
+    # json keys
+    perch_length = "perch_length"
+    perch_weight = "perch_weight"
+    bream_length = "bream_length"
+    bream_weight = "bream_weight"
+    smelt_length = "smelt_length"
+    smelt_weight = "smelt_weight"
+    perch_full = "perch_full"
 
     def __init__(self):
         if not os.path.exists(self._json_file_path):
@@ -14,17 +23,7 @@ class Sample:
             return
         
         with open(self._json_file_path, encoding="utf8") as f:
-            json_obj = json.load(f)    
-
-            for key, val in json_obj.items():
-                json_obj[key] = np.array(val)
-
-            self.perch_length = json_obj["perch_length"]
-            self.perch_weight = json_obj["perch_weight"]
-            self.bream_length = json_obj["bream_length"]
-            self.bream_weight = json_obj["bream_weight"]
-            self.smelt_length = json_obj["smelt_length"]
-            self.smelt_weight = json_obj["smelt_weight"]
+            self.json_obj = json.load(f)    
 
         print("샘플 데이터 로딩이 안료되었습니다....")
 
@@ -35,7 +34,7 @@ class Sample:
 
     def get_sample_data(self):
         train_input, test_input, train_target, test_target = train_test_split(
-            self.perch_length, self.perch_weight, random_state=42
+            self.json_obj[self.perch_length], self.json_obj[self.perch_weight], random_state=42
         )
     
         # 훈련 세트는 2차원 배열이여야 하므로 shape 변경
@@ -46,22 +45,41 @@ class Sample:
     
     
     def get_bream_smelt_data(self):
-        return self.bream_length, self.bream_weight, self.smelt_length, self.smelt_weight
+        return (
+            self.json_obj[self.bream_length], 
+            self.json_obj[self.bream_weight], 
+            self.json_obj[self.smelt_length], 
+            self.json_obj[self.smelt_weight]
+        )
 
 
     def get_fish_data(self):
-        fish_length = np.append(self.bream_length, self.smelt_length)
-        fish_weight = np.append(self.bream_weight, self.smelt_weight)
+        fish_length = np.append(self.json_obj[self.bream_length], self.json_obj[self.smelt_length])
+        fish_weight = np.append(self.json_obj[self.bream_weight], self.json_obj[self.smelt_weight])
 
         return fish_length, fish_weight
     
 
     def read_remote_perch_data(self):
-        df = pd.read_csv("https://bit.ly/perch_csv_data")
-        perch_full = df.to_numpy()
+        if self.perch_full not in self.json_obj:
+            df = pd.read_csv("https://bit.ly/perch_csv_data")
+            perch_full = df.to_numpy()
 
-        return perch_full, self.perch_weight
-    
+            length = list(perch_full[:, 0])
+            height = list(perch_full[:, 1])
+            width = list(perch_full[:, 2])
+
+            self.json_obj[self.perch_full] = {
+                "length": length,
+                "height": height,
+                "width": width
+            }
+            
+            with open(self._json_file_path, "w", encoding="utf8") as fp:
+                json.dump(self.json_obj, fp, sort_keys = True, indent = 4)
+
+        return self.json_obj[self.perch_full], self.json_obj[self.perch_weight]
+
 
 if __name__ == "__main__":
     sp = Sample()
