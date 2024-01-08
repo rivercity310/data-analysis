@@ -83,13 +83,15 @@ class LogisticRegression_04_1_Ex:
         # 골라낸 데이터로 로지스틱 회귀 모델 훈련
         lr = LogisticRegression()
         lr.fit(train_bream_smelt, target_bream_smelt)
-        print(lr.predict(train_bream_smelt[:5]))
-        print(lr.predict_proba(train_bream_smelt[:5]))
+        sample_bream_smelt = train_bream_smelt[:5]
+        
+        print(lr.predict(sample_bream_smelt))
+        print(lr.predict_proba(sample_bream_smelt))
 
         # 로지스틱 회귀 모델이 학습한 계수 출력
         print(f"계수 = {lr.coef_}")
         print(f"절편 = {lr.intercept_}")
-        decisions = lr.decision_function(train_bream_smelt[:5])
+        decisions = lr.decision_function(sample_bream_smelt)
         print(f"z = {decisions}")
 
         # 얻은 z값을 시그모이드 함수에 통과시켜 확률 얻기
