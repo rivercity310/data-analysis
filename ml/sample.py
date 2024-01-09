@@ -26,7 +26,7 @@ class Sample:
         with open(self._json_file_path, encoding="utf8") as f:
             self.json_obj = json.load(f)    
 
-        print("샘플 데이터 로딩이 안료되었습니다....")
+        print("샘플 데이터 로딩이 완료되었습니다....")
 
 
     def get_perch_data(self):

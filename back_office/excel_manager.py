@@ -1,7 +1,9 @@
 import openpyxl
+import os
 
 
 class ExcelManager:
+    # 엑셀
     _excel_file_path = r"C:\Users\seungsu\Desktop\employment\지원이력.xlsx"
 
     def __init__(self):
@@ -26,4 +28,3 @@ class ExcelManager:
 
 if __name__ == "__main__":
     em = ExcelManager()
-    
