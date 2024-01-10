@@ -2,6 +2,7 @@ import numpy as np
 import pandas as pd
 import json
 import os
+import requests
 from sklearn.model_selection import train_test_split
 
 
@@ -114,9 +115,29 @@ class Sample:
         fish_target = np.array(fish_full['Species'])
 
         return fish_input, fish_target
+    
 
+    def read_remote_wine_data(self):
+        url = "https://raw.githubusercontent.com/rickiepark/hg-mldl/master/wine.csv"
+        # wine = requests.get(url)
+        wine = pd.read_csv(url)
 
+        # 첫 5개 샘플을 확인하고, 데이터프레임의 각 열의 데이터 타입과 누락 데이터 확인
+        # 만약 누락된 데이터가 있다면 훈련 세트의 평균값으로 채워 사용하는 방법이 있다.
+        print(wine.head())  
+        print(wine.info())  
+        
+        # 각 열에 대한 간략한 통계 출력 (최대, 최소, 평균, 표준편차, n분위수)
+        print(wine.describe())
+
+        # 데이터 프레임을 넘파이 배열로 바꾸어 리턴
+        wine_data = wine[['alcohol', 'sugar', 'pH']].to_numpy()
+        wine_target = wine['class'].to_numpy()
+
+        return wine_data, wine_target
+
+        
 if __name__ == "__main__":
     sp = Sample()
     # print(sp.read_remote_perch_data())
-    print(sp.read_remote_fish_data())
+    sp.read_remote_wine_data()
