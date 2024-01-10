@@ -1,11 +1,16 @@
 import numpy as np
 import matplotlib.pyplot as plt
+import sys
+
+sys.path.append(r"C:\Users\seungsu\Desktop\projects\unittest\ml")
+
 from sample import Sample
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 from scipy.special import expit
+from scipy.special import softmax
 
 
 # [ 로지스틱 회귀 ]
@@ -97,7 +102,52 @@ class LogisticRegression_04_1_Ex:
         # 얻은 z값을 시그모이드 함수에 통과시켜 확률 얻기
         print(expit(decisions))
 
+    
+    # 로지스틱 회귀 다중 분류
+    def ex4(self):
+        # LogisticRegression: 
+        #   - RidgeRegression과 동일하게 계수의 제곱을 규제
+        #   - alpha 매개변수 대신 C 매개변수 (default 1, alpha와 반대로 작을 수록 규제가 커짐)
+        #   - max_iter: 반복 횟수 지정, default 100
+        lr = LogisticRegression(C = 20, max_iter = 100)
+        lr.fit(self.train_scaled, self.train_target)
+        
+        print(lr.score(self.train_scaled, self.train_target))
+        print(lr.score(self.test_scaled, self.test_target))
+        print(lr.predict(self.test_scaled[:5]))     # 첫 5개 샘플에 대한 예측 출력
+
+        # 첫 5개 테스트 샘플에 대한 예측 확률 출력
+        # - decimals = 3 -> 소숫점 4번째 자리에서 반올림
+        proba = lr.predict_proba(self.test_scaled[:5])
+        print(lr.classes_)  # 클래스 정보 확인
+        print(np.round(proba, decimals = 3))
+
+        # 예측에 대한 타겟값 출력
+        for i, prob in enumerate(proba, start = 1):
+            index = np.where(prob == np.max(prob))
+            print(f"{i}번째 예측 타겟: {lr.classes_[index]}, 확률: {prob[index]}")
+
+        # 학습한 선형 방정식 계수와 절편 출력 
+        # 클래스마다 z값 계산, 가장 높은 z값을 출력하는 클래스가 예측 클래스가 됨
+        print(lr.coef_)
+        print(lr.intercept_)
+
+
+        # 다중 분류에서는 z값을 softmax 함수를 통과시켜 확률로 변환시킴 (scify 제공)
+        # e_sum = sigma(e^z1 ... e^zn), s1 = e^z1 / e_sum .... sn = e^zn / e_sum
+        # sigma(s1 ... sn) = 1이 되므로 확률로 변환 가능
+        # 시그모이드 함수와 소프트맥스 함수는 신경망에서도 흔히 사용됨
+
+        # [ 직접 z1 ~ z7 값을 구해서 소프트맥스 함수를 통해 확률로 바꿔보기 ]
+        decision = lr.decision_function(self.test_scaled[:5])
+        print(np.round(decision, decimals = 2))
+        
+        proba = softmax(decision, axis = 1)     # axis = 1 -> 행마다 계산
+        print(np.round(proba, decimals = 3))    # lr.predict_proba()와 동일한 값
+
+        
+
 
 if __name__ == "__main__":
     lr = LogisticRegression_04_1_Ex()
-    lr.ex3()
+    lr.ex4()
