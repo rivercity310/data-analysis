@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 import json
 import os
-import requests
+import threading
 from sklearn.model_selection import train_test_split
 
 
@@ -66,7 +66,7 @@ class Sample:
 
     def read_remote_perch_data(self):
         if self.perch_full not in self.json_obj:
-            df = pd.read_csv("https://bit.ly/perch_csv_data")
+            df = self.call_network_thread("https://bit.ly/perch_csv_data")
             perch_full = df.to_numpy()
 
             length = list(perch_full[:, 0])
@@ -91,7 +91,7 @@ class Sample:
 
     def read_remote_fish_data(self):
         if self.fish_full not in self.json_obj:
-            fish = pd.read_csv("https://bit.ly/fish_csv_data")
+            fish = self.call_network_thread("https://bit.ly/fish_csv_data")
             fish_dict = dict()
 
             for col in fish.columns:
@@ -119,8 +119,7 @@ class Sample:
 
     def read_remote_wine_data(self):
         url = "https://raw.githubusercontent.com/rickiepark/hg-mldl/master/wine.csv"
-        # wine = requests.get(url)
-        wine = pd.read_csv(url)
+        wine = self.call_network_thread(url)
 
         # 첫 5개 샘플을 확인하고, 데이터프레임의 각 열의 데이터 타입과 누락 데이터 확인
         # 만약 누락된 데이터가 있다면 훈련 세트의 평균값으로 채워 사용하는 방법이 있다.
@@ -135,9 +134,37 @@ class Sample:
         wine_target = wine['class'].to_numpy()
 
         return wine_data, wine_target
+    
 
+    def call_network_thread(self, url):
+        thread = ThreadWithReturnValue(target = self._call_remote_data, args = [url])
+        thread.start()
+        print(f"Thread {thread.name} 실행")
+        return thread.join()
+
+
+    def _call_remote_data(self, url: str):
+        return pd.read_csv(url)
+
+
+# 네트워크 I/0를 위한 스레드 상속 클래스 
+class ThreadWithReturnValue(threading.Thread):
+    def __init__(self, group = None, target = None, name = None, args = (), kwargs = {}, verbose = None):
+        threading.Thread.__init__(self, group, target, name, args, kwargs)
+        self._return = None
+
+    def run(self):
+        if self._target is not None:
+            self._return = self._target(*self._args, **self._kwargs)
+
+    def join(self, *args):
+        threading.Thread.join(self, *args)
+        return self._return
         
+
+
 if __name__ == "__main__":
     sp = Sample()
-    # print(sp.read_remote_perch_data())
+    sp.read_remote_fish_data()
+    sp.read_remote_perch_data()
     sp.read_remote_wine_data()

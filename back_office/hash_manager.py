@@ -14,7 +14,7 @@ class HashManager:
     # 해당 파일의 파일명, MD5, SHA256, 파일크기를 추출하고
     # _default_path 경로에 hash.txt 파일을 생성하여 추출 정보를 기록합니다.
     # 혹은 self.text_file_path를 수정하여 원하는 위치에 hash.txt 파일을 저장할 수 있습니다.
-    _default_path = "C:\\Users\\seungsu\\Desktop\\materials"
+    _default_path = "D:\\patch.xlsx"
     
     # 전체 폴더를 탐색하게 설계되었으므로 
     # 만일 탐색하고 싶지 않은 폴더/파일이 있다면 이곳에 추가
