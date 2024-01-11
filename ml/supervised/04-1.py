@@ -132,7 +132,6 @@ class LogisticRegression_04_1_Ex:
         print(lr.coef_)
         print(lr.intercept_)
 
-
         # 다중 분류에서는 z값을 softmax 함수를 통과시켜 확률로 변환시킴 (scify 제공)
         # e_sum = sigma(e^z1 ... e^zn), s1 = e^z1 / e_sum .... sn = e^zn / e_sum
         # sigma(s1 ... sn) = 1이 되므로 확률로 변환 가능
