@@ -4,10 +4,21 @@
 # 직급: 인턴
 
 
+# ---------------- 사용법 --------------------------------------------------
+# - 터미널을 "관리자 권한"으로 여는 것을 권장합니다. (파일 읽기/쓰기 권한 문제)
+# - 만약, IDEA를 사용한다면 역시 "관리자 권한"으로 여는 것이 좋습니다.
+# - 폴더 이름을 Excel 시트의 각 OS 버전 제목과 일치시키기 
+# - HashManager._default_path: 패치 파일을 포함하고 있는 루트 디렉터리 경로
+# - HashManager._ignore_folders: 탐색을 생략하고자 하는 폴더명
+# - HashManager._ignore_files: 탐색을 생략하고자 하는 파일명 
+# -------------------------------------------------------------------------
+
+
 import os
 import hashlib
 import time
 import json
+from datetime import datetime
 
 
 class HashManager:
@@ -77,24 +88,23 @@ class HashManager:
 
         for dir, file, md5, sha256 in self.hash_result_list:
             file_size = os.path.getsize(dir + "\\" + file)
-            
+
             tmp = dict()
             tmp['파일명'] = file
-            tmp['SubJect'] = file
-            tmp['변경파일 버전'] = ""
-            tmp['Title'] = ""
-            tmp['Summary'] = ""
-            tmp['BulletinUrl'] = ""
-            tmp['Bulletine ID'] = ""
-            tmp['KBNumber'] = ""
-            tmp['PatchDate'] = ""
+            tmp['PatchDate'] = datetime.today().strftime("%Y/%m/%d")
             tmp['중요도'] = ""
+            tmp['변경파일 버전'] = "123"
             tmp['cve'] = []
             tmp['파일크기'] = f"{file_size / (1000 ** 2):.2f}"
             tmp['MD5'] = md5
             tmp['SHA256'] = sha256
 
-            js[file] = tmp
+            key = dir.split("\\")[-1]
+
+            if key in js:
+                js[key].append(tmp)
+            else:
+                js[key] = [tmp]
 
         with open(self.json_file_path, "w", encoding = "utf8") as fp:
             json.dump(js, fp, indent = 4, sort_keys = True, ensure_ascii = False)
