@@ -7,14 +7,14 @@
 import os
 import hashlib
 import time
+import json
 
 
 class HashManager:
     # 이 경로 하위에 있는 모든 폴더를 탐색하여 파일을 찾습니다.
     # 해당 파일의 파일명, MD5, SHA256, 파일크기를 추출하고
-    # _default_path 경로에 hash.txt 파일을 생성하여 추출 정보를 기록합니다.
-    # 혹은 self.text_file_path를 수정하여 원하는 위치에 hash.txt 파일을 저장할 수 있습니다.
-    _default_path = "D:\\patch.xlsx"
+    # _default_path 경로에 hash.json 파일을 생성하여 추출 정보를 기록합니다.
+    _default_path = "C:\\Users\\seungsu\\Desktop\\materials"
     
     # 전체 폴더를 탐색하게 설계되었으므로 
     # 만일 탐색하고 싶지 않은 폴더/파일이 있다면 이곳에 추가
@@ -26,11 +26,11 @@ class HashManager:
         self.file_dir_list = os.listdir(self._default_path)
         self.file_path_list = list()
         self.hash_result_list = list()
-        self.text_file_path = self._default_path + "\\" + "hash.txt"
+        self.json_file_path = self._default_path + "\\" + "hash.json"
 
-        if os.path.exists(self.text_file_path):
-            self.title_print("기존 hash.txt 파일을 삭제합니다")
-            os.remove(self.text_file_path)
+        if os.path.exists(self.json_file_path):
+            self.title_print("기존 hash.json 파일을 삭제합니다")
+            os.remove(self.json_file_path)
 
     
     def start(self, path = _default_path):
@@ -72,36 +72,34 @@ class HashManager:
         self.title_print("모든 파일에 대한 해시 정보 추출이 완료되었습니다")
 
     
-    def write_result_on_text_file(self):
-        tmp = ""
+    def write_result(self):
+        js = dict()
 
         for dir, file, md5, sha256 in self.hash_result_list:
             file_size = os.path.getsize(dir + "\\" + file)
+            
+            tmp = dict()
+            tmp['파일명'] = file
+            tmp['SubJect'] = file
+            tmp['변경파일 버전'] = ""
+            tmp['Title'] = ""
+            tmp['Summary'] = ""
+            tmp['BulletinUrl'] = ""
+            tmp['Bulletine ID'] = ""
+            tmp['KBNumber'] = ""
+            tmp['PatchDate'] = ""
+            tmp['중요도'] = ""
+            tmp['cve'] = []
+            tmp['파일크기'] = f"{file_size / (1000 ** 2):.2f}"
+            tmp['MD5'] = md5
+            tmp['SHA256'] = sha256
 
-            tmp += "----------------------------------\n"
-            tmp += f"파일명: {file}\n"
-            tmp += f"파일 크기: {file_size / (1000 ** 2): .2f}MB\n"
-            tmp += f"md5: {md5}\n"
-            tmp += f"sha256: {sha256}\n"
-            tmp += "----------------------------------\n\n"
+            js[file] = tmp
 
-            # 1000자 이상일 때만 파일 I/O
-            if len(tmp) > 1000:
-                with open(self.text_file_path, "at", encoding="utf8") as fp:
-                    fp.write(tmp)
+        with open(self.json_file_path, "w", encoding = "utf8") as fp:
+            json.dump(js, fp, indent = 4, sort_keys = True, ensure_ascii = False)
 
-                tmp = ""
-
-
-    def remove_text_file(self):
-        if os.path.exists(self.text_file_path):
-            os.remove(self.text_file_path)
-            self.title_print("hash.txt 파일을 성공적으로 제거하였습니다.")
-
-        else:
-            self.title_print("이미 제거되었거나 해당 파일이 존재하지 않습니다.")
-
-
+        
     def run(self):
         try:
             self.title_print("탐색을 시작합니다")
@@ -111,19 +109,8 @@ class HashManager:
             self.title_print("해시값을 추출합니다")
             time.sleep(1)
             hm.load_hash_value()
-            hm.write_result_on_text_file()        
+            hm.write_result()
 
-            self.title_print("결과 파일을 출력합니다")
-            time.sleep(2)
-            with open(self.text_file_path, "r", encoding="utf8") as fp:
-                print(fp.read())
-            self.title_print("")
-
-            res = input("\n\n결과 파일을 삭제할까요?(y/n) ")
-
-            if res == "y":
-                hm.remove_text_file()
-        
         except Exception as e:
             print(e)
         
@@ -133,7 +120,7 @@ class HashManager:
     
     def title_print(self, msg):
         print("\n")
-        print("-" * 50 + msg + "-" * 50)
+        print("-" * 30 + msg + "-" * 30)
 
 
 if __name__ == "__main__":
