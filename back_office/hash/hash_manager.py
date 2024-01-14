@@ -91,7 +91,9 @@ class HashManager:
 
                 obj = {
                     "dir_path": dir,
+                    "file_path": file_path,
                     "file_name": file,
+                    "file_size": f"{os.path.getsize(file_path) / (10 ** 6):.2f}",
                     "MD5": md5,
                     "SHA256": sha256
                 }

@@ -8,13 +8,17 @@ class DotnetHashManager(HashManager):
     _include_folders_name = []
     _include_files_name = ["windows"]
 
+
     def __init__(self):
         super().__init__(self._include_files_name)
         self.hash_result_list = super().get_hash_result()
         print(self.hash_result_list)
 
+        # 추후 Crawler를 구현하여 가져올 항목들
+        # [title, summary, qnumber, patchdate, 중요도, cve]
 
-    def _get_dict_once_probs(self, qnumber: str):
+
+    def _get_dict_common_props(self, qnumber: str):
         return {
             "Bulletine ID": f"MS-KB{qnumber}",
             "KBNumber": f"KB{qnumber}",
@@ -24,7 +28,7 @@ class DotnetHashManager(HashManager):
         }
     
     
-    def _get_dict_multiple_probs(self, file, file_size, md5, sha256):
+    def _get_dict_per_props(self, file, file_size, md5, sha256):
         return {
             "Title": "TMP title",
             "Summary": "TMP Summary",
@@ -35,6 +39,10 @@ class DotnetHashManager(HashManager):
             "SHA256": sha256,
             "Wsus 파일": "TMP WSUS 파일"
         }
+    
+
+
+    
     
 
 if __name__ == "__main__":
