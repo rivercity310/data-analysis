@@ -5,12 +5,12 @@ from datetime import datetime
 
 class DotnetHashManager(HashManager):
     # 탐색하고자 하는 파일/폴더의 이름 (startswith 조건)
-    _include_folders_name = []
+    _include_folders_name = "D:\\patch\\patchfiles"
     _include_files_name = ["windows"]
 
 
     def __init__(self):
-        super().__init__(self._include_files_name)
+        super().__init__(self._include_files_name, self._include_folders_name)
         self.hash_result_list = super().get_hash_result()
         print(self.hash_result_list)
 

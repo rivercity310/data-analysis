@@ -1,20 +1,23 @@
 from crawling_manager import CrawlingManager
 from bs4 import BeautifulSoup
-from selenium import webdriver
 from selenium.webdriver.common.by import By
-from selenium.webdriver.common.keys import Keys
+from collections import deque
+from datetime import datetime
 import re
 import requests
 import time
 import os
+import copy
 
 
+os.path.append(r"C:\Users\seungsu\Desktop\projects\unittest\back_office\hash")
+
+from hash.dotnet_hash_manager import DotnetHashManager
 
 
 class DotnetCrawlingManager(CrawlingManager):
     test_link = "https://devblogs.microsoft.com/dotnet/dotnet-framework-january-2024-security-and-quality-rollup/"
 
-    result_dict = dict()
 
     _exclude_patch = {
         "Microsoft server operating system, version 23H2": "*",
@@ -24,18 +27,25 @@ class DotnetCrawlingManager(CrawlingManager):
 
     _patch_file_path = "D:\\patch\\patchfiles"
 
+
     def __init__(self):
         super().__init__()
         self.download_click_cnt = 0
-        
+        self.qnumbers = deque()
+        self.result_dict = dict()
+        hm = DotnetHashManager()
+
 
     def run(self):
         try:
             soup = self.soup
+
+            # 전체 공통 속성 
+            # PatchDate, CVE
+            global_commons = dict()
     
             print("-----------[패치 노트 CVE 목록 수집중...]--------------")
             cve_list = self._crawling_cve_data(soup)
-            print(cve_list)
             print("-----------[CVE 목록 수집 완료]-----------------------")
             print("\n\n")
 
@@ -44,23 +54,61 @@ class DotnetCrawlingManager(CrawlingManager):
             print("-----------------------[수집 완료]-----------------------")
             print("\n\n")
 
+            global_commons["PatchDate"] = datetime.today().strftime("%Y/%d/%m")
+            global_commons["cve"] = ",".join(cve_list)
+
+            # 빈 리스트 키 삭제 & 딥카피
+            data_dict = dict(filter(lambda val: len(val[1]) != 0, patch_data_dict.items()))
+ 
             # 각 기술문서 들어가서 제목 수집, 카탈로그 들어가서 패치파일 다운로드, 파일 이름 변경
             print("-----[각 기술문서에서 Title, Summary 수집, 카탈로그 다운로드 창 오픈중...]--------")
 
-            for patch_key, patch_data in patch_data_dict.items():
+            for patch_key, patch_data in data_dict.items():
                 print(f"[{patch_key} 작업을 시작합니다..]")
 
+                # 각 라인별 공통 속성
+                # BulletinID, KBNumber, 중요도
+                local_commons = dict()
+                last_qnum = ""
+
+                # 각 라인 내에서 국가별로 다른 속성
+                # title, summary, bulletinUrl
+                diff = dict()
+
                 for patch in patch_data:
-                    for data_key, data_value in patch.items():                
+                    for data_key, data_value in patch.items():  
+                        print(f"{data_key} : {data_value}")
+
                         if data_key.startswith("catalog"):
                             print(f"Catalog Open: {data_value}")
                             self._download_patch_file(data_value)
+                            qnum = data_value[-7:]
+                            local_commons[qnum] = dict()
+                            local_commons[qnum]["Bulletine ID"] = f"MS-KB{qnum}"
+                            local_commons[qnum]["KBNumber"] = f"KB{qnum}"
+                            local_commons[qnum]["중요도"] = "???"       
+                            last_qnum = qnum
                 
                         elif data_key.startswith("bulletin"):
                             print(f"기술문서 Open: {data_value}")
                             title, summary = self._crawling_patch_title_and_summary(data_value)
                             print(f"title: {title}")
                             print(f"summary: {summary}")
+                            
+                            diff[last_qnum] = dict()
+                            postfix = data_key[-3:] # _kr, _en ..
+                            
+                            bulletin_key = "BulletinUrl" + postfix
+                            title_key = "Title" + postfix
+                            summary_key = "Summary" + postfix
+                            
+                            diff[last_qnum][bulletin_key] = data_value
+                            diff[last_qnum][title_key] = title
+                            diff[last_qnum][summary_key] = summary
+
+                global_commons[patch_key]["local_commons"] = local_commons
+                global_commons[patch_key]["diff"] = diff
+
 
             print("-----------------------[수집 완료]-----------------------")
             print("***패치 파일은 수동으로 다운로드 받아야 합니다***")
@@ -81,8 +129,15 @@ class DotnetCrawlingManager(CrawlingManager):
                         break
             """
 
+            # 패치 파일 및 관련 속성
+            # 파일명, 파일 크기, WSUS 파일, VerndorUrl, MD5, SHA256 
+            patch = list()
+
+
             # 패치 파일명 변경, 패치 파일 압축 해제, WSUSSCAN 파일명 변경 & 추출 작업
             for file_name in os.listdir(self._patch_file_path):
+                pfile = dict()
+
                 if not file_name.startswith("windows"):
                     continue
 
@@ -95,8 +150,18 @@ class DotnetCrawlingManager(CrawlingManager):
 
                 # msu 파일 압축해제
                 cmd = f"expand -f:* {file_abs_path} D:\\patch\\{new_file_name}"
+                cab_file_name = new_file_name.split(".msu")[0] + "_WSUSSCAN.cab"
                 os.system(cmd)
-                os.rename(f"D:\\patch\\{new_file_name}\\WSUSSCAN.cab", f"D:\\patch\\{new_file_name}\\{new_file_name.split('.msu')[0]}_WSUSSCAN.cab")
+                os.rename(f"D:\\patch\\{new_file_name}\\WSUSSCAN.cab", f"D:\\patch\\{new_file_name}\\{cab_file_name}")
+
+                md5, sha256, file_size = self.hm.get_hash_file(file_abs_path)
+
+                pfile["파일명"] = new_file_name
+                pfile["파일크기"] = file_size
+                pfile["Wsus 파일"] = cab_file_name
+                pfile["MD5"] = md5
+                pfile["SHA256"] = sha256
+                
                 
         
         except Exception as e:
@@ -122,7 +187,6 @@ class DotnetCrawlingManager(CrawlingManager):
         tds = tbody.find_all("td")
 
         tmp = dict()
-        qnumbers = set()
         last_key = ""
         last_exclude_key = ""
 
@@ -167,7 +231,7 @@ class DotnetCrawlingManager(CrawlingManager):
                     print(f"****부모 QNumber 제외합니다. {qnumber}")
                     continue
 
-                if qnumber in qnumbers:
+                if qnumber in self.qnumbers:
                     print(f"****이미 처리된 QNumber 제외합니다. {qnumber}")
                     continue
 
@@ -183,7 +247,7 @@ class DotnetCrawlingManager(CrawlingManager):
                     "bulletin_url_cn": f"http://support.microsoft.com/zh-cn/help/{td.text}",
                 })
 
-                qnumbers.add(qnumber)
+                self.qnumbers.append(qnumber)
         
         return tmp
     
@@ -239,8 +303,8 @@ class DotnetCrawlingManager(CrawlingManager):
 
 if __name__ == "__main__":
     dcm = DotnetCrawlingManager()
-    # dcm.run()
-    print(dcm._crawling_patch_title_and_summary("https://support.microsoft.com/ko-kr/help/5018210"))
+    dcm.run()
+    # print(dcm._crawling_patch_title_and_summary("https://support.microsoft.com/ko-kr/help/5018210"))
 
     # 패치 파일명 변경, 패치 파일 압축 해제, WSUSSCAN 파일명 변경 & 추출 작업
     '''

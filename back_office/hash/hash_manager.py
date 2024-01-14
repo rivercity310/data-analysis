@@ -30,8 +30,9 @@ class HashManager:
     _ignore_files = ["CentOS-Stream-8-x86_64-latest-dvd1.iso"]
 
 
-    def __init__(self, include_files: list):
+    def __init__(self, include_files: list, include_folder_name: str):
         self.include_files_name = include_files
+        self.include_folder_name = include_folder_name
         self.file_dir_list = os.listdir(self._default_path)
         self.file_path_list = list()
         self.hash_result_list = list()
@@ -75,9 +76,24 @@ class HashManager:
             print(f"현재 경로: {path}")
             self._start(path + "\\" + f)
 
+    def get_hash_file(self, path: str):
+        print(f"[해시값 추출 중......]")
+        
+        with open(path, "rb") as fp:
+            bin = fp.read()
+            md5 = hashlib.md5(bin).hexdigest()
+            sha256 = hashlib.sha256(bin).hexdigest()
+            file_size = f"{os.path.getsize(path) / (10 ** 6):.2f}"
+
+        return md5, sha256, file_size
+    
     
     def get_hash_result(self):
-        self._start()
+        if self.include_folder_name == None:
+            self._start()
+        else:
+            self._start(self.include_folder_name)
+
         hash_result_list = list()
 
         for dir, file in self.file_path_list:

@@ -51,8 +51,10 @@ class DotnetExcelManager(ExcelManager):
     def __init__(self):
         super().__init__(self._sheet_name)
 
+
     def start(self):
-        
+        pass
+
 
     def run(self):
         print(f"{__class__} 가동을 시작합니다..")
