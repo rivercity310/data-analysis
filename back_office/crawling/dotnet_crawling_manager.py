@@ -7,12 +7,6 @@ import re
 import requests
 import time
 import os
-import copy
-
-
-os.path.append(r"C:\Users\seungsu\Desktop\projects\unittest\back_office\hash")
-
-from hash.dotnet_hash_manager import DotnetHashManager
 
 
 class DotnetCrawlingManager(CrawlingManager):
@@ -33,7 +27,6 @@ class DotnetCrawlingManager(CrawlingManager):
         self.download_click_cnt = 0
         self.qnumbers = deque()
         self.result_dict = dict()
-        hm = DotnetHashManager()
 
 
     def run(self):
@@ -65,6 +58,7 @@ class DotnetCrawlingManager(CrawlingManager):
 
             for patch_key, patch_data in data_dict.items():
                 print(f"[{patch_key} 작업을 시작합니다..]")
+                global_commons[patch_key] = dict()
 
                 # 각 라인별 공통 속성
                 # BulletinID, KBNumber, 중요도
@@ -108,6 +102,8 @@ class DotnetCrawlingManager(CrawlingManager):
 
                 global_commons[patch_key]["local_commons"] = local_commons
                 global_commons[patch_key]["diff"] = diff
+
+                print(global_commons)
 
 
             print("-----------------------[수집 완료]-----------------------")
@@ -154,13 +150,13 @@ class DotnetCrawlingManager(CrawlingManager):
                 os.system(cmd)
                 os.rename(f"D:\\patch\\{new_file_name}\\WSUSSCAN.cab", f"D:\\patch\\{new_file_name}\\{cab_file_name}")
 
-                md5, sha256, file_size = self.hm.get_hash_file(file_abs_path)
+                # md5, sha256, file_size = self.hm.get_hash_file(file_abs_path)
 
                 pfile["파일명"] = new_file_name
-                pfile["파일크기"] = file_size
+                pfile["파일경로"] = file_abs_path
                 pfile["Wsus 파일"] = cab_file_name
-                pfile["MD5"] = md5
-                pfile["SHA256"] = sha256
+                # pfile["MD5"] = md5
+                # pfile["SHA256"] = sha256
                 
                 
         
