@@ -16,9 +16,6 @@
 
 import os
 import hashlib
-import time
-import json
-from datetime import datetime
 
 
 class HashManager:
@@ -33,7 +30,8 @@ class HashManager:
     _ignore_files = ["CentOS-Stream-8-x86_64-latest-dvd1.iso"]
 
 
-    def __init__(self):
+    def __init__(self, include_files: list):
+        self.include_files_name = include_files
         self.file_dir_list = os.listdir(self._default_path)
         self.file_path_list = list()
         self.hash_result_list = list()
@@ -43,12 +41,23 @@ class HashManager:
             self.title_print("기존 hash.json 파일을 삭제합니다")
             os.remove(self.json_file_path)
 
-    
-    def start(self, path = _default_path):
+
+    def _start(self, path = _default_path):
         if os.path.isfile(path):
             dir, file = os.path.split(path)
 
             if file in self._ignore_files:
+                return
+            
+            flag = False
+
+            for include_file_name in self.include_files_name:
+                flag = file.startswith(include_file_name)
+            
+                if flag:
+                    break
+            
+            if not flag:
                 return
             
             self.file_path_list.append((dir, file))
@@ -64,10 +73,13 @@ class HashManager:
 
         for f in list_dir:
             print(f"현재 경로: {path}")
-            self.start(path + "\\" + f)
+            self._start(path + "\\" + f)
 
     
-    def load_hash_value(self):
+    def get_hash_result(self):
+        self._start()
+        hash_result_list = list()
+
         for dir, file in self.file_path_list:
             print(f"[작업 중...] dir: {dir}, file: {file}")
             file_path = dir + "\\" + file
@@ -77,56 +89,20 @@ class HashManager:
                 md5 = hashlib.md5(binary).hexdigest()
                 sha256 = hashlib.sha256(binary).hexdigest()
 
-            self.hash_result_list.append((dir, file, md5, sha256))
+                obj = {
+                    "dir_path": dir,
+                    "file_name": file,
+                    "MD5": md5,
+                    "SHA256": sha256
+                }
+
+                hash_result_list.append(obj)
         
         del self.file_path_list
         self.title_print("모든 파일에 대한 해시 정보 추출이 완료되었습니다")
-
-    
-    def write_result(self):
-        js = dict()
-
-        for dir, file, md5, sha256 in self.hash_result_list:
-            file_size = os.path.getsize(dir + "\\" + file)
-
-            tmp = dict()
-            tmp['파일명'] = file
-            tmp['PatchDate'] = datetime.today().strftime("%Y/%m/%d")
-            tmp['중요도'] = ""
-            tmp['변경파일 버전'] = "123"
-            tmp['cve'] = []
-            tmp['파일크기'] = f"{file_size / (1000 ** 2):.2f}"
-            tmp['MD5'] = md5
-            tmp['SHA256'] = sha256
-
-            key = dir.split("\\")[-1]
-
-            if key in js:
-                js[key].append(tmp)
-            else:
-                js[key] = [tmp]
-
-        with open(self.json_file_path, "w", encoding = "utf8") as fp:
-            json.dump(js, fp, indent = 4, sort_keys = True, ensure_ascii = False)
-
         
-    def run(self):
-        try:
-            self.title_print("탐색을 시작합니다")
-            time.sleep(1)
-            hm.start()
+        return hash_result_list
 
-            self.title_print("해시값을 추출합니다")
-            time.sleep(1)
-            hm.load_hash_value()
-            hm.write_result()
-
-        except Exception as e:
-            print(e)
-        
-        finally:
-            del self
-    
     
     def title_print(self, msg):
         print("\n")
@@ -135,4 +111,3 @@ class HashManager:
 
 if __name__ == "__main__":
     hm = HashManager()
-    hm.run()
