@@ -7,6 +7,8 @@ import re
 import requests
 import time
 import os
+import hashlib
+import json
 
 
 class DotnetCrawlingManager(CrawlingManager):
@@ -39,6 +41,7 @@ class DotnetCrawlingManager(CrawlingManager):
     
             print("-----------[패치 노트 CVE 목록 수집중...]--------------")
             cve_list = self._crawling_cve_data(soup)
+            print(",".join(cve_list))
             print("-----------[CVE 목록 수집 완료]-----------------------")
             print("\n\n")
 
@@ -47,8 +50,9 @@ class DotnetCrawlingManager(CrawlingManager):
             print("-----------------------[수집 완료]-----------------------")
             print("\n\n")
 
-            global_commons["PatchDate"] = datetime.today().strftime("%Y/%d/%m")
-            global_commons["cve"] = ",".join(cve_list)
+            global_commons["commons"] = dict()
+            global_commons["commons"]["PatchDate"] = datetime.today().strftime("%Y/%m/%d")
+            global_commons["commons"]["cve"] = ",".join(cve_list)
 
             # 빈 리스트 키 삭제 & 딥카피
             data_dict = dict(filter(lambda val: len(val[1]) != 0, patch_data_dict.items()))
@@ -75,7 +79,22 @@ class DotnetCrawlingManager(CrawlingManager):
 
                         if data_key.startswith("catalog"):
                             print(f"Catalog Open: {data_value}")
-                            self._download_patch_file(data_value)
+                            
+                            vendor_dict = self._download_patch_file(data_value)
+
+                            for file_name, vendor_url in vendor_dict:
+                                print(f"{file_name} 다운로드 완료")
+                                
+                                # 여기서 가공해야 함 key = file_name, value = SHA256, MD5, vendor_url, file_size, wsusscan
+                                sp = file_name.split("_")
+                                new_file_name = "".join([sp[0], ".", sp[1].split(".")[1]]).replace("kb", "KB")
+
+                                print(f"[파일명 변경] {file_name} -> {new_file_name}")
+                                file_abs_path = f"{self._patch_file_path}\\{new_file_name}"
+                                os.rename(f"{self._patch_file_path}\\{file_name}", file_abs_path)
+
+                                global_commons[patch_key][new_file_name] = self.extract_file_info(new_file_name, vendor_url) 
+
                             qnum = data_value[-7:]
                             local_commons[qnum] = dict()
                             local_commons[qnum]["Bulletine ID"] = f"MS-KB{qnum}"
@@ -112,6 +131,9 @@ class DotnetCrawlingManager(CrawlingManager):
             print("추후 완전 자동화로 개선될 예정입니다.")
             print("\n\n")
 
+            with open("D:\\patch\\result.json", "w", encoding = "utf8") as fp:
+                json.dump(global_commons, indent = 4, sort_keys = True)
+
             """
             while True:
                 res = input("전체 패치 파일을 다운로드 받으셨나요? (y/n) ")
@@ -125,41 +147,6 @@ class DotnetCrawlingManager(CrawlingManager):
                         break
             """
 
-            # 패치 파일 및 관련 속성
-            # 파일명, 파일 크기, WSUS 파일, VerndorUrl, MD5, SHA256 
-            patch = list()
-
-
-            # 패치 파일명 변경, 패치 파일 압축 해제, WSUSSCAN 파일명 변경 & 추출 작업
-            for file_name in os.listdir(self._patch_file_path):
-                pfile = dict()
-
-                if not file_name.startswith("windows"):
-                    continue
-
-                sp = file_name.split("_")
-                new_file_name = "".join([sp[0], ".", sp[1].split(".")[1]]).replace("kb", "KB")
-                print(f"[파일명 변경] {file_name} -> {new_file_name}")
-
-                file_abs_path = f"{self._patch_file_path}\\{new_file_name}"
-                os.rename(f"{self._patch_file_path}\\{file_name}", file_abs_path)
-
-                # msu 파일 압축해제
-                cmd = f"expand -f:* {file_abs_path} D:\\patch\\{new_file_name}"
-                cab_file_name = new_file_name.split(".msu")[0] + "_WSUSSCAN.cab"
-                os.system(cmd)
-                os.rename(f"D:\\patch\\{new_file_name}\\WSUSSCAN.cab", f"D:\\patch\\{new_file_name}\\{cab_file_name}")
-
-                # md5, sha256, file_size = self.hm.get_hash_file(file_abs_path)
-
-                pfile["파일명"] = new_file_name
-                pfile["파일경로"] = file_abs_path
-                pfile["Wsus 파일"] = cab_file_name
-                # pfile["MD5"] = md5
-                # pfile["SHA256"] = sha256
-                
-                
-        
         except Exception as e:
             print("--------------- 처리되지 않은 예외 발생 --------------")
             print(e)
@@ -170,11 +157,40 @@ class DotnetCrawlingManager(CrawlingManager):
 
         finally:
             self.browser.close()
+            del self
             # self.write_result()
 
-    
+
+    def extract_file_info(self, file_name, vendor_url):
+        file_abs_path = self._patch_file_path + "\\" + file_name
+
+        # 파일 크기
+        file_size = f"{os.path.getsize(file_abs_path) / (10 ** 6):.2f}"
+
+        with open(file_abs_path, "rb") as fp:
+            binary = fp.read()
+            md5 = hashlib.md5(binary).hexdigest()
+            sha256 = hashlib.sha256(binary).hexdigest()
+
+        # msu 파일 압축해제
+        cmd = f"expand -f:* {file_abs_path} D:\\patch\\{file_name}"
+        cab_file_name = file_name.split(".msu")[0] + "_WSUSSCAN.cab"
+
+        os.system(cmd)
+        os.rename(f"D:\\patch\\{file_name}\\WSUSSCAN.cab", f"D:\\patch\\{file_name}\\{cab_file_name}")
+
+        return {
+            "file_size": file_size,
+            "vendor_url": vendor_url,
+            "WSUS 파일": cab_file_name,
+            "MD5": md5,
+            "SHA256": sha256
+        }
+
+
     def _crawling_cve_data(self, soup: BeautifulSoup):
-        return list(map(lambda x: re.match("CVE-\d+-\d+", x.text).group(), soup.find_all(id = re.compile("^cve"))))
+        div = soup.find("div", "entry-content")
+        return list(map(lambda x: re.match("CVE-\d+-\d+", x.text).group(), div.find_all(id = re.compile("^cve"))))
 
 
     def _crawling_patch_data(self, soup: BeautifulSoup):
@@ -236,11 +252,11 @@ class DotnetCrawlingManager(CrawlingManager):
                 print(f"[타겟 QNumber를 발견했습니다]: {qnumber}")
 
                 tmp[last_key].append({
-                    "catalog_link": f"http://www.catalog.update.microsoft.com/Search.aspx?q={qnumber}",
-                    "bulletin_url_kr": f"http://support.microsoft.com/ko-kr/help/{td.text}",
-                    "bulletin_url_jp": f"http://support.microsoft.com/ja-jp/help/{td.text}",
-                    "bulletin_url_us": f"http://support.microsoft.com/en-us/help/{td.text}",
-                    "bulletin_url_cn": f"http://support.microsoft.com/zh-cn/help/{td.text}",
+                    "catalog_link": f"https://www.catalog.update.microsoft.com/Search.aspx?q={qnumber}",
+                    "bulletin_url_kr": f"https://support.microsoft.com/ko-kr/help/{td.text}",
+                    "bulletin_url_jp": f"https://support.microsoft.com/ja-jp/help/{td.text}",
+                    "bulletin_url_us": f"https://support.microsoft.com/en-us/help/{td.text}",
+                    "bulletin_url_cn": f"https://support.microsoft.com/zh-cn/help/{td.text}",
                 })
 
                 self.qnumbers.append(qnumber)
@@ -250,8 +266,9 @@ class DotnetCrawlingManager(CrawlingManager):
 
     def _crawling_patch_title_and_summary(self, url):
         try:
-            req = requests.get(url)
-            soup = BeautifulSoup(req.content, "html.parser")
+            self.browser.get(url)
+            self.browser.implicitly_wait(5)
+            soup = BeautifulSoup(self.browser.page_source, "html.parser")
 
             title = soup.find(name = "h1", attrs = {"id": "page-header"}).text.strip()
             section = soup.find(name = "section", attrs = {"id": "bkmk_summary"})
@@ -277,24 +294,62 @@ class DotnetCrawlingManager(CrawlingManager):
 
 
     def _download_patch_file(self, link):
+        browser = self.get_new_browser_obj()
+        vendor_dict = dict()
+        
         try:
-            browser = self.browser
             browser.get(link)
-            table = self.browser.find_element(by = By.CLASS_NAME, value = "resultsBorder")
+            table = browser.find_element(by = By.CLASS_NAME, value = "resultsBorder")
             trs = table.find_elements(by = By.TAG_NAME, value = "tr")[1:]
+            download_path = self._patch_file_path
+            main_window = browser.current_window_handle
 
             for tr in trs:
                 tds = tr.find_elements(by = By.TAG_NAME, value = "td")[1:]
                 download_link = tds[-1]
                 download_link.click()
-                self.download_click_cnt += 1
-                # browser.implicitly_wait(2)
-                time.sleep(2)
-        
+                
+                browser.implicitly_wait(10)
+                browser.switch_to.window(browser.window_handles[-1])
+
+                # 열린 다운로드 창에서 파일 다운로드 받기
+                atag = browser.find_element(by = By.TAG_NAME, value = "a")
+                vendor_url = atag['href']
+                file_name = atag.text
+
+                if file_name not in os.listdir(download_path):
+                    atag.click()
+                    self.download_click_cnt += 1
+                    vendor_dict[file_name] = vendor_url
+                    browser.close()
+
+                browser.implicitly_wait(10)
+                browser.switch_to.window(main_window)
+
+            browser.quit()
+
+            # 파일이 모두 다운로드 될 때까지 대기
+            dl = True
+            
+            while dl:
+                lst = os.listdir(download_link)
+                dl = False
+
+                print("파일을 다운로드 중입니다..........")
+                for file in lst:
+                    if file.endswith("crdownload"):
+                        dl = True
+                        time.sleep(3)
+
+            return vendor_dict
+
         except Exception as e:
             print(f"에러가 발생했습니다. {link}")
             print(e)
             return
+        
+        finally:
+            del browser
             
 
 if __name__ == "__main__":
