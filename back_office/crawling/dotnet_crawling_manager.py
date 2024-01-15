@@ -56,7 +56,8 @@ class DotnetCrawlingManager(CrawlingManager):
 
             # 빈 리스트 키 삭제 & 딥카피
             data_dict = dict(filter(lambda val: len(val[1]) != 0, patch_data_dict.items()))
- 
+            del patch_data_dict
+
             # 각 기술문서 들어가서 제목 수집, 카탈로그 들어가서 패치파일 다운로드, 파일 이름 변경
             print("-----[각 기술문서에서 Title, Summary 수집, 카탈로그 다운로드 창 오픈중...]--------")
 
@@ -156,7 +157,6 @@ class DotnetCrawlingManager(CrawlingManager):
             # self.rollback()
 
         finally:
-            self.browser.close()
             del self
             # self.write_result()
 
@@ -294,7 +294,7 @@ class DotnetCrawlingManager(CrawlingManager):
 
 
     def _download_patch_file(self, link):
-        browser = self.get_new_browser_obj()
+        browser = self.browser
         vendor_dict = dict()
         
         try:
@@ -309,8 +309,7 @@ class DotnetCrawlingManager(CrawlingManager):
                 download_link = tds[-1]
                 download_link.click()
                 
-                browser.implicitly_wait(10)
-                browser.switch_to.window(browser.window_handles[-1])
+                # print(self.browser.current_url) Nonetype??
 
                 # 열린 다운로드 창에서 파일 다운로드 받기
                 atag = browser.find_element(by = By.TAG_NAME, value = "a")
@@ -321,6 +320,7 @@ class DotnetCrawlingManager(CrawlingManager):
                     atag.click()
                     self.download_click_cnt += 1
                     vendor_dict[file_name] = vendor_url
+                    time.sleep(2)
                     browser.close()
 
                 browser.implicitly_wait(10)
