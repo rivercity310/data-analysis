@@ -347,6 +347,9 @@ class DotnetCrawlingManager(CrawlingManager):
                     for file in lst:
                         if file.endswith("crdownload"):
                             dl = True
+                        else:
+                            if file[-5] == ')':
+                                os.remove(f"D:\\patch\\patchfiles\\{file}")
                         time.sleep(2)
                 
                 browser.close()
