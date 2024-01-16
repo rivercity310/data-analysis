@@ -37,6 +37,8 @@ class DotnetCrawlingManager(CrawlingManager):
         # 3. 중요도 수집
         # 4. 코드 모듈화
         # 5. CVE번호 MSRC에 검색해서 검증하기
+        # 6. 제품명에 따른 다운로드예외 처리 (https://www.catalog.update.microsoft.com/Search.aspx?q=5034119) 링크에서 Windows Server 2016
+        # 7. 예외 발생시 수집 Title, Summary
 
     def run(self):
         try:
@@ -164,6 +166,9 @@ class DotnetCrawlingManager(CrawlingManager):
                     print(f"{file} -> 불필요한 삭제!")
                     os.remove(cab_file_path + "\\" + file)
 
+            # TODO
+            # 원본 msu 파일이랑 cab 파일 짝 맞추기?
+
 
             print("-----------------------[수집 완료]-----------------------")
             print("\n\n")
@@ -178,21 +183,28 @@ class DotnetCrawlingManager(CrawlingManager):
                     continue
 
                 if os.path.exists(self._patch_file_path):
+                    # TODO
+                    # 조건을 KB번호에 일치하는 파일이 다 있는지 검사하는 걸로 변경 예정
                     if self.download_click_cnt == len(os.listdir()):
                         print("전체 파일 다운로드가 확인되었습니다.")
                         break
+                
+                print(f"다운로드 횟수: {self.download_click_cnt}")
 
         except Exception as e:
             print("--------------- 처리되지 않은 예외 발생 --------------")
             print(e)
             print("--------------- 프로그램이 비정상적으로 종료되었습니다.")
-            
+
+            # TODO
             # 추후 패치파일 다운로드 폴더 삭제 및 데이터 해제 작업 진행
             # self.rollback()
 
         finally:
             del self
             # self.write_result()
+            print("---------------------- 프로그램이 성공적으로 종료되었습니다... ---------------------------")
+            print("수집된 패치 파일에 대해 V3 정밀 검사를 진행해주세요.")
 
 
     def extract_file_info(self, file_name, vendor_url):
@@ -240,6 +252,9 @@ class DotnetCrawlingManager(CrawlingManager):
         tds = tbody.find_all("td")
 
         tmp = dict()
+
+        # TODO
+        # 추후 sorted_set으로 변경 예정
         last_keys = set()
         last_key = ""
         last_exclude_key = ""
