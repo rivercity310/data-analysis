@@ -131,7 +131,7 @@ class DotnetCrawlingManager(CrawlingManager):
             print("\n\n")
 
             with open("D:\\patch\\result.json", "w", encoding = "utf8") as fp:
-                json.dump(global_commons, indent = 4, sort_keys = True)
+                json.dump(global_commons, fp, indent = 4, sort_keys = True)
 
             """
             while True:
@@ -176,7 +176,7 @@ class DotnetCrawlingManager(CrawlingManager):
             md5 = hashlib.md5(binary).hexdigest()
             sha256 = hashlib.sha256(binary).hexdigest()
 
-        # msu 파일 압축해제
+        # msu 파일 압축해제 (WSUSSCAN 파일만 )
         cmd = f"expand -f:* {file_abs_path} {cabs_file_path}"
         cab_file_name = file_name.split(".msu")[0] + "_WSUSSCAN.cab"
         os.system(cmd)
