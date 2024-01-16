@@ -36,6 +36,7 @@ class DotnetCrawlingManager(CrawlingManager):
         # 2. 추출된 Title, Summary에서 유니코드 제거 작업 (문자열화)
         # 3. 중요도 수집
         # 4. 코드 모듈화
+        # 5. CVE번호 MSRC에 검색해서 검증하기
 
     def run(self):
         try:
