@@ -37,7 +37,7 @@ class DotnetCrawlingManager(CrawlingManager):
         # 3. 중요도 수집
         # 4. 코드 모듈화
         # 5. CVE번호 MSRC에 검색해서 검증하기
-        # 6. 제품명에 따른 다운로드예외 처리 (https://www.catalog.update.microsoft.com/Search.aspx?q=5034119) 링크에서 Windows Server 2016
+        # 6. 제품명에 따른 다운로드 예외 처리 (https://www.catalog.update.microsoft.com/Search.aspx?q=5034119) 링크에서 Windows Server 2016
         # 7. 예외 발생시 수집 Title, Summary
 
     def run(self):
@@ -261,12 +261,14 @@ class DotnetCrawlingManager(CrawlingManager):
 
         for td in tds:
             # 공백 td 제거
-            if td.text.strip() == "":
+            tstrip = td.text.strip()
+
+            if tstrip == "":
                 continue
 
             # Microsoft | Windows로 시작하면 Product Version
-            if td.text.startswith("Microsoft") or td.text.startswith("Windows"):
-                product_version = td.text.strip()
+            if tstrip.startswith("Microsoft") or tstrip.startswith("Windows"):
+                product_version = tstrip
 
                 if product_version in self._exclude_patch:
                     if self._exclude_patch[product_version] == "*":
@@ -280,8 +282,8 @@ class DotnetCrawlingManager(CrawlingManager):
                 tmp[last_key] = list()
                 
             # product version의 특정 닷넷 패치를 제외
-            if td.text.strip().startswith(".NET"):
-                dotnet_version = td.text.strip()
+            if tstrip.startswith(".NET"):
+                dotnet_version = tstrip
                 
                 if last_exclude_key in self._exclude_patch:
                     if dotnet_version == self._exclude_patch[last_exclude_key]:
