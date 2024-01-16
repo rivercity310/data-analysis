@@ -31,9 +31,11 @@ class DotnetCrawlingManager(CrawlingManager):
         self.result_dict = dict()
         self.main_window = self.browser.window_handles[0]
 
+        # TODO
         # 1. _patch_files_path 폴더 비우기 작업
         # 2. 추출된 Title, Summary에서 유니코드 제거 작업 (문자열화)
-
+        # 3. 중요도 수집
+        # 4. 코드 모듈화
 
     def run(self):
         try:
