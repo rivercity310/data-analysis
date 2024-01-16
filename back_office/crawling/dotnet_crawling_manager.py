@@ -133,7 +133,6 @@ class DotnetCrawlingManager(CrawlingManager):
             with open("D:\\patch\\result.json", "w", encoding = "utf8") as fp:
                 json.dump(global_commons, fp, indent = 4, sort_keys = True)
 
-            """
             while True:
                 res = input("전체 패치 파일을 다운로드 받으셨나요? (y/n) ")
                 
@@ -144,7 +143,6 @@ class DotnetCrawlingManager(CrawlingManager):
                     if self.download_click_cnt == len(os.listdir()):
                         print("전체 파일 다운로드가 확인되었습니다.")
                         break
-            """
 
         except Exception as e:
             print("--------------- 처리되지 않은 예외 발생 --------------")
