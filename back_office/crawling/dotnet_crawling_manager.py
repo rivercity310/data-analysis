@@ -154,6 +154,17 @@ class DotnetCrawlingManager(CrawlingManager):
                 print(global_commons)
 
 
+            # CAB 파일 정리
+            cab_file_path = self._patch_file_path + "\\" + "cabs"
+            for file in os.listdir(cab_file_path):
+                # KB 단위
+                file_size = os.path.getsize(cab_file_path + "\\" + file) / (10 ** 4)
+
+                if file_size <= 10 or file_size >= 1000:
+                    print(f"{file} -> 불필요한 삭제!")
+                    os.remove(cab_file_path + "\\" + file)
+
+
             print("-----------------------[수집 완료]-----------------------")
             print("\n\n")
 
