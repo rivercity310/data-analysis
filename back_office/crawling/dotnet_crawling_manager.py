@@ -33,7 +33,7 @@ class DotnetCrawlingManager(CrawlingManager):
 
         # TODO
         # 1. _patch_files_path 폴더 비우기 작업
-        # 2. 추출된 Title, Summary에서 유니코드 제거 작업 (문자열화)
+        # 2. 추출된 Title, Summary에서 특정 유니코드 제거 작업 (문자열화) ex. - : \u2013
         # 3. 중요도 수집
         # 4. 코드 모듈화
         # 5. CVE번호 MSRC에 검색해서 검증하기
@@ -436,8 +436,8 @@ class DotnetCrawlingManager(CrawlingManager):
             
 
 if __name__ == "__main__":
-    dcm = DotnetCrawlingManager()
-    dcm.run()
+    # dcm = DotnetCrawlingManager()
+    # dcm.run()
     # print(dcm._crawling_patch_title_and_summary("https://support.microsoft.com/ko-kr/help/5018210"))
 
     # 패치 파일명 변경, 패치 파일 압축 해제, WSUSSCAN 파일명 변경 & 추출 작업
@@ -464,6 +464,9 @@ if __name__ == "__main__":
 
         os.rename(f"D:\\patch\\{new_file_name}\\WSUSSCAN.cab", f"D:\\patch\\{new_file_name}\\{new_file_name.split('.msu')[0]}_WSUSSCAN.cab")
     '''
+
+    with open("D:\\patch\\result.json", "r", encoding = "unicode") as fp:
+        print(fp.read())
     
     
                 
