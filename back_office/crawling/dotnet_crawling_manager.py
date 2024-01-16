@@ -226,7 +226,7 @@ class DotnetCrawlingManager(CrawlingManager):
         tds = tbody.find_all("td")
 
         tmp = dict()
-        last_keys = list()
+        last_keys = set()
         last_key = ""
         last_exclude_key = ""
 
@@ -263,7 +263,7 @@ class DotnetCrawlingManager(CrawlingManager):
             if last_key == "":
                 continue
 
-            last_keys.append(last_key)
+            last_keys.add(last_key)
 
             # 숫자로 시작하면 qnumber
             if re.match("^\d{7}", td.text):
@@ -281,7 +281,7 @@ class DotnetCrawlingManager(CrawlingManager):
                 # 기술문서 링크: http://support.microsoft.com/{nation-code}/help/{qnumber}
                 print(f"[타겟 QNumber를 발견했습니다]: {qnumber}")
 
-                tmp[last_keys[-1]].append({
+                tmp[last_key].append({
                     "catalog_link": f"https://www.catalog.update.microsoft.com/Search.aspx?q={qnumber}",
                     "bulletin_url_kr": f"https://support.microsoft.com/ko-kr/help/{td.text}",
                     "bulletin_url_jp": f"https://support.microsoft.com/ja-jp/help/{td.text}",
@@ -291,9 +291,9 @@ class DotnetCrawlingManager(CrawlingManager):
 
                 self.qnumbers.append(qnumber)
 
-        print("------------------- 수집 대상 QNumber ----------------------------")
-        for qn in last_keys:
-            print(qn)
+        print("------------------- 수집 대상 OS ----------------------------")
+        for idx, key in enumerate(last_keys):
+            print(f"{idx + 1}. {key}")
         print("-----------------------------------------------------------------")
         print("\n\n")
         
