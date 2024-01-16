@@ -159,10 +159,7 @@ class DotnetCrawlingManager(CrawlingManager):
             # CAB 파일 정리
             cab_file_path = self._patch_file_path + "\\" + "cabs"
             for file in os.listdir(cab_file_path):
-                # KB 단위
-                file_size = os.path.getsize(cab_file_path + "\\" + file) / (10 ** 4)
-
-                if file_size <= 10 or file_size >= 1000:
+                if file.endswith(".txt") or file.endswith(".xml") or "NDP" in file:
                     print(f"{file} -> 불필요한 삭제!")
                     os.remove(cab_file_path + "\\" + file)
 
@@ -465,8 +462,12 @@ if __name__ == "__main__":
         os.rename(f"D:\\patch\\{new_file_name}\\WSUSSCAN.cab", f"D:\\patch\\{new_file_name}\\{new_file_name.split('.msu')[0]}_WSUSSCAN.cab")
     '''
 
-    with open("D:\\patch\\result.json", "r", encoding = "unicode") as fp:
+    with open("D:\\patch\\result.json", "r", encoding = "utf8") as fp:
         print(fp.read())
     
-    
-                
+    # CAB 파일 정리
+    cab_file_path = "D:\\patch\\patchfiles\\cabs"
+    for file in os.listdir(cab_file_path):
+        if file.endswith(".txt") or file.endswith(".xml") or "NDP" in file:
+            print(f"{file} -> 불필요한 삭제!")
+            os.remove(cab_file_path + "\\" + file)
