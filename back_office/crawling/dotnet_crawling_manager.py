@@ -31,6 +31,9 @@ class DotnetCrawlingManager(CrawlingManager):
         self.result_dict = dict()
         self.main_window = self.browser.window_handles[0]
 
+        # 1. _patch_files_path 폴더 비우기 작업
+        # 2. 추출된 Title, Summary에서 유니코드 제거 작업 (문자열화)
+
 
     def run(self):
         try:
@@ -86,6 +89,18 @@ class DotnetCrawlingManager(CrawlingManager):
                             
                             vendor_dict = self._download_patch_file(data_value)
 
+                            while True: 
+                                dl = False
+                                for file in os.listdir(self._patch_file_path):
+                                    if file.endswith("crdownload"):
+                                        dl = True
+
+                                print("아직 파일을 다운로드 하고있어요...............")
+                                time.sleep(2)
+
+                                if not dl:
+                                    break
+
                             for file_name, vendor_url in vendor_dict.items():
                                 print(f"{file_name} : {vendor_url}")
 
@@ -95,9 +110,14 @@ class DotnetCrawlingManager(CrawlingManager):
 
                                 print(f"[파일명 변경] {file_name} -> {new_file_name}")
                                 file_abs_path = f"{self._patch_file_path}\\{new_file_name}"
-                                os.rename(f"{self._patch_file_path}\\{file_name}", file_abs_path)
 
-                                time.sleep(4)
+                                try:
+                                    os.rename(f"{self._patch_file_path}\\{file_name}", file_abs_path)
+                                
+                                except Exception as e:
+                                    print("--------파일명 변경 중 에러 발생!! (중복된 파일)------------")
+                                    print(f"\"{file_name}\": 건너뜁니다")
+                                    continue
 
                                 global_commons[patch_key][new_file_name] = self.extract_file_info(new_file_name, vendor_url) 
 
@@ -341,9 +361,7 @@ class DotnetCrawlingManager(CrawlingManager):
                 vendor_dict[file_name] = vendor_url
 
                 # 파일이 모두 다운로드 될 때까지 블로킹
-                dl = True
-                
-                while dl:
+                while True:
                     lst = os.listdir(self._patch_file_path)
                     dl = False
 
@@ -352,9 +370,12 @@ class DotnetCrawlingManager(CrawlingManager):
                         if file.endswith("crdownload"):
                             dl = True
                         else:
-                            if file[-5] == ')':
+                            if file != "cabs" and file[-5] == ')':
                                 os.remove(f"D:\\patch\\patchfiles\\{file}")
-                        time.sleep(2)
+                        time.sleep(1)
+
+                    if not dl:
+                        break
                 
                 browser.close()
                 browser.switch_to.window(main_window)
