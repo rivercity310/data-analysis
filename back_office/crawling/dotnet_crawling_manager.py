@@ -34,6 +34,8 @@ class DotnetCrawlingManager(CrawlingManager):
 
     def run(self):
         try:
+            time.sleep(5)
+            print("-------------------- 닷넷 크롤러를 작동합니다 ---------------------------------")
             soup = self.soup
 
             # 전체 공통 속성 
@@ -94,6 +96,8 @@ class DotnetCrawlingManager(CrawlingManager):
                                 print(f"[파일명 변경] {file_name} -> {new_file_name}")
                                 file_abs_path = f"{self._patch_file_path}\\{new_file_name}"
                                 os.rename(f"{self._patch_file_path}\\{file_name}", file_abs_path)
+
+                                time.sleep(4)
 
                                 global_commons[patch_key][new_file_name] = self.extract_file_info(new_file_name, vendor_url) 
 
