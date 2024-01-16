@@ -29,6 +29,7 @@ class DotnetCrawlingManager(CrawlingManager):
         self.download_click_cnt = 0
         self.qnumbers = deque()
         self.result_dict = dict()
+        self.main_window = self.browser.window_handles[0]
 
 
     def run(self):
@@ -83,9 +84,9 @@ class DotnetCrawlingManager(CrawlingManager):
                             
                             vendor_dict = self._download_patch_file(data_value)
 
-                            for file_name, vendor_url in vendor_dict:
-                                print(f"{file_name} 다운로드 완료")
-                                
+                            for file_name, vendor_url in vendor_dict.items():
+                                print(f"{file_name} : {vendor_url}")
+
                                 # 여기서 가공해야 함 key = file_name, value = SHA256, MD5, vendor_url, file_size, wsusscan
                                 sp = file_name.split("_")
                                 new_file_name = "".join([sp[0], ".", sp[1].split(".")[1]]).replace("kb", "KB")
@@ -127,9 +128,6 @@ class DotnetCrawlingManager(CrawlingManager):
 
 
             print("-----------------------[수집 완료]-----------------------")
-            print("***패치 파일은 수동으로 다운로드 받아야 합니다***")
-            print("***vendor url 역시 수동으로 수집해주세요***")
-            print("추후 완전 자동화로 개선될 예정입니다.")
             print("\n\n")
 
             with open("D:\\patch\\result.json", "w", encoding = "utf8") as fp:
@@ -162,7 +160,13 @@ class DotnetCrawlingManager(CrawlingManager):
 
 
     def extract_file_info(self, file_name, vendor_url):
+        time.sleep(3)
+
         file_abs_path = self._patch_file_path + "\\" + file_name
+        cabs_file_path = self._patch_file_path + "\\" + "cabs"
+
+        if not os.path.exists(cabs_file_path):
+            os.mkdir(cabs_file_path)
 
         # 파일 크기
         file_size = f"{os.path.getsize(file_abs_path) / (10 ** 6):.2f}"
@@ -173,11 +177,12 @@ class DotnetCrawlingManager(CrawlingManager):
             sha256 = hashlib.sha256(binary).hexdigest()
 
         # msu 파일 압축해제
-        cmd = f"expand -f:* {file_abs_path} D:\\patch\\{file_name}"
+        cmd = f"expand -f:* {file_abs_path} {cabs_file_path}"
         cab_file_name = file_name.split(".msu")[0] + "_WSUSSCAN.cab"
-
         os.system(cmd)
-        os.rename(f"D:\\patch\\{file_name}\\WSUSSCAN.cab", f"D:\\patch\\{file_name}\\{cab_file_name}")
+        time.sleep(3)
+
+        os.rename(f"{cabs_file_path}\\WSUSSCAN.cab", f"{cabs_file_path}\\{cab_file_name}")
 
         return {
             "file_size": file_size,
@@ -293,7 +298,7 @@ class DotnetCrawlingManager(CrawlingManager):
         return title, summary
 
 
-    def _download_patch_file(self, link):
+    def _download_patch_file(self, link: str):
         browser = self.browser
         vendor_dict = dict()
         
@@ -306,50 +311,62 @@ class DotnetCrawlingManager(CrawlingManager):
 
             for tr in trs:
                 tds = tr.find_elements(by = By.TAG_NAME, value = "td")[1:]
+                title = tds[0].text
+                print(f"{title} 클릭")
                 download_link = tds[-1]
                 download_link.click()
-                
-                # print(self.browser.current_url) Nonetype??
+
+                time.sleep(3)
+
+                browser.switch_to.window(browser.window_handles[-1]) 
+
+                time.sleep(5)
 
                 # 열린 다운로드 창에서 파일 다운로드 받기
-                atag = browser.find_element(by = By.TAG_NAME, value = "a")
-                vendor_url = atag['href']
+                atag = browser.find_element(by = By.XPATH, value = "//*[@id=\"downloadFiles\"]/div[2]/a")
+                vendor_url = atag.get_attribute('href')
                 file_name = atag.text
+                print(f"{file_name} : {vendor_url} 다운로드를 시도합니다.")
 
-                if file_name not in os.listdir(download_path):
-                    atag.click()
-                    self.download_click_cnt += 1
-                    vendor_dict[file_name] = vendor_url
-                    time.sleep(2)
+                if file_name in os.listdir(download_path):
+                    print(f"[{file_name}] 이미 존재하는 파일은 건너뜁니다.")
                     browser.close()
+                    browser.switch_to.window(main_window)
+                    continue
 
-                browser.implicitly_wait(10)
+                atag.click()
+                self.download_click_cnt += 1
+                vendor_dict[file_name] = vendor_url
+
+                # 파일이 모두 다운로드 될 때까지 블로킹
+                dl = True
+                
+                while dl:
+                    lst = os.listdir(self._patch_file_path)
+                    dl = False
+
+                    print("파일을 다운로드 중입니다..........")
+                    for file in lst:
+                        if file.endswith("crdownload"):
+                            dl = True
+                        time.sleep(2)
+                
+                browser.close()
                 browser.switch_to.window(main_window)
 
-            browser.quit()
-
-            # 파일이 모두 다운로드 될 때까지 대기
-            dl = True
-            
-            while dl:
-                lst = os.listdir(download_link)
-                dl = False
-
-                print("파일을 다운로드 중입니다..........")
-                for file in lst:
-                    if file.endswith("crdownload"):
-                        dl = True
-                        time.sleep(3)
-
-            return vendor_dict
-
         except Exception as e:
-            print(f"에러가 발생했습니다. {link}")
+            print(f"\"{link}\"를 처리하던 중 에러가 발생했습니다.")
             print(e)
-            return
         
         finally:
-            del browser
+            for handle in browser.window_handles[1:]:
+                browser.switch_to.window(handle)
+                browser.close()
+                del handle
+
+            browser.switch_to.window(browser.window_handles[0])
+
+        return vendor_dict
             
 
 if __name__ == "__main__":
