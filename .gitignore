@@ -6,3 +6,6 @@
 *.csv
 *.pyc
 *.png
+*.msu
+*.xml
+*.txt

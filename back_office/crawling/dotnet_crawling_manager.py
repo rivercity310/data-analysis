@@ -4,11 +4,11 @@ from selenium.webdriver.common.by import By
 from collections import deque
 from datetime import datetime
 import re
-import requests
 import time
 import os
 import hashlib
 import json
+import math
 
 
 class DotnetCrawlingManager(CrawlingManager):
@@ -20,29 +20,36 @@ class DotnetCrawlingManager(CrawlingManager):
         "Windows 10 1607 and Windows Server 2016": ".NET Framework 3.5, 4.6.2, 4.7, 4.7.1, 4.7.2",
         "Windows 10 1507": "*"
     }
-
-    _patch_file_path = "D:\\patch\\patchfiles"
+    
+    _exclude_qnumber = {
+        "5034119": "Windows 10 1607 and Windows Server 2016"
+    }
 
 
     def __init__(self):
         super().__init__()
+        
+        self._cab_file_path = self._patch_file_path / "cabs"
         self.download_click_cnt = 0
         self.qnumbers = deque()
         self.result_dict = dict()
         self.main_window = self.browser.window_handles[0]
 
         # TODO
-        # 1. _patch_files_path 폴더 비우기 작업
+        # 1. _patch_files_path 폴더 비우기 작업 -> 완료
         # 2. 추출된 Title, Summary에서 특정 유니코드 제거 작업 (문자열화) ex. - : \u2013
         # 3. 중요도 수집
         # 4. 코드 모듈화
         # 5. CVE번호 MSRC에 검색해서 검증하기
-        # 6. 제품명에 따른 다운로드 예외 처리 (https://www.catalog.update.microsoft.com/Search.aspx?q=5034119) 링크에서 Windows Server 2016
+        # 6. 제품명에 따른 다운로드 예외 처리 (https://www.catalog.update.microsoft.com/Search.aspx?q=5034119) 링크에서 Windows Server 2016 -> 완료
         # 7. 예외 발생시 수집 Title, Summary
+
 
     def run(self):
         try:
-            time.sleep(5)
+            time.sleep(3)
+            self.browser.implicitly_wait(5)
+            print("\n\n")
             print("-------------------- 닷넷 크롤러를 작동합니다 ---------------------------------")
             soup = self.soup
 
@@ -60,7 +67,7 @@ class DotnetCrawlingManager(CrawlingManager):
             patch_data_dict = self._crawling_patch_data(soup)
             print("-----------------------[수집 완료]-----------------------")
             print("\n\n")
-
+                
             global_commons["commons"] = dict()
             global_commons["commons"]["PatchDate"] = datetime.today().strftime("%Y/%m/%d")
             global_commons["commons"]["cve"] = ",".join(cve_list)
@@ -75,7 +82,7 @@ class DotnetCrawlingManager(CrawlingManager):
             for patch_key, patch_data in data_dict.items():
                 print(f"[{patch_key} 작업을 시작합니다..]")
                 global_commons[patch_key] = dict()
-
+                
                 # 각 라인별 공통 속성
                 # BulletinID, KBNumber, 중요도
                 local_commons = dict()
@@ -90,8 +97,16 @@ class DotnetCrawlingManager(CrawlingManager):
                         print(f"{data_key} : {data_value}")
 
                         if data_key.startswith("catalog"):
-                            print(f"Catalog Open: {data_value}")
+                            qnumber = data_key[-7:]
                             
+                            if qnumber in self._exclude_qnumber:
+                                os_version = self._exclude_qnumber[qnumber]
+                                res = input(f"{os_version} 진행할까요? (y/n) ")
+                                
+                                if res == "n":
+                                    continue
+                            
+                            print(f"Catalog Open: {data_value}")                            
                             vendor_dict = self._download_patch_file(data_value)
 
                             while True: 
@@ -121,7 +136,8 @@ class DotnetCrawlingManager(CrawlingManager):
                                 
                                 except Exception as e:
                                     print("--------파일명 변경 중 에러 발생!! (중복된 파일)------------")
-                                    print(f"\"{file_name}\": 건너뜁니다")
+                                    print(f"중복된 파일 \"{file_name}\" 삭제합니다.")
+                                    os.remove(f"{self._patch_file_path}\\{file_name}")
                                     continue
 
                                 global_commons[patch_key][new_file_name] = self.extract_file_info(new_file_name, vendor_url) 
@@ -157,11 +173,10 @@ class DotnetCrawlingManager(CrawlingManager):
 
 
             # CAB 파일 정리
-            cab_file_path = self._patch_file_path + "\\" + "cabs"
-            for file in os.listdir(cab_file_path):
+            for file in os.listdir(self.cab_file_path):
                 if file.endswith(".txt") or file.endswith(".xml") or "NDP" in file:
                     print(f"{file} -> 불필요한 삭제!")
-                    os.remove(cab_file_path + "\\" + file)
+                    os.remove(self.cab_file_path + "\\" + file)
 
             # TODO
             # 원본 msu 파일이랑 cab 파일 짝 맞추기?
@@ -170,7 +185,7 @@ class DotnetCrawlingManager(CrawlingManager):
             print("-----------------------[수집 완료]-----------------------")
             print("\n\n")
 
-            with open("D:\\patch\\result.json", "w", encoding = "utf8") as fp:
+            with open(str(self._json_file_path), "w", encoding = "utf8") as fp:
                 json.dump(global_commons, fp, indent = 4, sort_keys = True)
 
             while True:
@@ -200,21 +215,20 @@ class DotnetCrawlingManager(CrawlingManager):
         finally:
             del self
             # self.write_result()
-            print("---------------------- 프로그램이 성공적으로 종료되었습니다... ---------------------------")
             print("수집된 패치 파일에 대해 V3 정밀 검사를 진행해주세요.")
 
 
     def extract_file_info(self, file_name, vendor_url):
         time.sleep(3)
 
-        file_abs_path = self._patch_file_path + "\\" + file_name
-        cabs_file_path = self._patch_file_path + "\\" + "cabs"
+        file_abs_path = self._patch_file_path / file_name
 
-        if not os.path.exists(cabs_file_path):
-            os.mkdir(cabs_file_path)
+        if not os.path.exists(self._cab_file_path):
+            os.mkdir(self._cab_file_path)
 
         # 파일 크기
-        file_size = f"{os.path.getsize(file_abs_path) / (10 ** 6):.2f}"
+        size_tmp = float(f"{os.path.getsize(file_abs_path) / (2 ** 20):.2f}")
+        file_size = math.floor(size_tmp + 0.5)
 
         with open(file_abs_path, "rb") as fp:
             binary = fp.read()
@@ -222,12 +236,12 @@ class DotnetCrawlingManager(CrawlingManager):
             sha256 = hashlib.sha256(binary).hexdigest()
 
         # msu 파일 압축해제 (WSUSSCAN 파일만 )
-        cmd = f"expand -f:* {file_abs_path} {cabs_file_path}"
+        cmd = f"expand -f:* {file_abs_path} {self._cab_file_path}"
         cab_file_name = file_name.split(".msu")[0] + "_WSUSSCAN.cab"
         os.system(cmd)
         time.sleep(3)
 
-        os.rename(f"{cabs_file_path}\\WSUSSCAN.cab", f"{cabs_file_path}\\{cab_file_name}")
+        os.rename(self._cab_file_path / "WSUSSCAN.cab", self._cab_file_path / cab_file_name)
 
         return {
             "file_size": file_size,
@@ -255,6 +269,7 @@ class DotnetCrawlingManager(CrawlingManager):
         last_keys = set()
         last_key = ""
         last_exclude_key = ""
+        excluded = list()
 
         for td in tds:
             # 공백 td 제거
@@ -271,6 +286,7 @@ class DotnetCrawlingManager(CrawlingManager):
                     if self._exclude_patch[product_version] == "*":
                         print(f"****{product_version} 전체 제외합니다.")
                         last_exclude_key = product_version
+                        excluded.append({last_exclude_key: "*"})
                         continue
 
                     last_exclude_key = product_version
@@ -285,6 +301,7 @@ class DotnetCrawlingManager(CrawlingManager):
                 if last_exclude_key in self._exclude_patch:
                     if dotnet_version == self._exclude_patch[last_exclude_key]:
                         print(f"****[{last_exclude_key} : {dotnet_version}] 제외합니다.")
+                        excluded.append({last_exclude_key: dotnet_version})
                         last_exclude_key = ""
                         continue
             
@@ -325,6 +342,19 @@ class DotnetCrawlingManager(CrawlingManager):
         print("-----------------------------------------------------------------")
         print("\n\n")
         
+        print("------------------- 수집 대상 QNumber ----------------------------")
+        for idx, qnumber in enumerate(self.qnumbers):
+            print(f"{idx + 1}. {qnumber}")
+        print("-----------------------------------------------------------------")
+        print("\n\n")
+        
+        print("------------------- 수집 제외 .NET 버전 ----------------------------")
+        for idx, dt in enumerate(excluded):
+            print(f"{idx + 1}. {dt}")
+        print("-----------------------------------------------------------------")
+        print("\n\n")
+        
+        
         return tmp
     
 
@@ -337,17 +367,11 @@ class DotnetCrawlingManager(CrawlingManager):
             title = soup.find(name = "h1", attrs = {"id": "page-header"}).text.strip()
             section = soup.find(name = "section", attrs = {"id": "bkmk_summary"})
             ps = section.find_all(name = "p")
-
-            print("--------------------------------")
-            print(f"url: {url}")
-            print(f"title: {title}")
             
             summary = ""
             for p in ps:
                 if p.text.strip().startswith("CVE"):
                     summary += p.text.strip() + "\n"
-            print(summary.rstrip())
-            print("--------------------------------")
         
         except Exception as e:
             print("--------------------------- 예외 발생 -------------------------")
@@ -371,52 +395,47 @@ class DotnetCrawlingManager(CrawlingManager):
             for tr in trs:
                 tds = tr.find_elements(by = By.TAG_NAME, value = "td")[1:]
                 title = tds[0].text
+                product = tds[1].text
+                
+                if "Windows Server 2019" in product or "Windows Server 2016" in product:
+                    print(f"{product} 건너뜁니다.")
+                    continue
+                
                 print(f"{title} 클릭")
                 download_link = tds[-1]
                 download_link.click()
+                time.sleep(2)
 
-                time.sleep(3)
-
+            while len(browser.window_handles) != 1:
                 browser.switch_to.window(browser.window_handles[-1]) 
 
-                time.sleep(5)
+                time.sleep(2)
 
                 # 열린 다운로드 창에서 파일 다운로드 받기
                 atag = browser.find_element(by = By.XPATH, value = "//*[@id=\"downloadFiles\"]/div[2]/a")
                 vendor_url = atag.get_attribute('href')
                 file_name = atag.text
-                print(f"{file_name} : {vendor_url} 다운로드를 시도합니다.")
+                print(f"{file_name}: {vendor_url} 다운로드를 시도합니다.")
 
-                if file_name in os.listdir(download_path):
-                    print(f"[{file_name}] 이미 존재하는 파일은 건너뜁니다.")
-                    browser.close()
-                    browser.switch_to.window(main_window)
+                flag = False
+                for dir_file_name in os.listdir(download_path):
+                    if dir_file_name.startswith(file_name):
+                        flag = True
+                        print(f"[{file_name}] 이미 존재하는 파일은 건너뜁니다.")
+                        browser.close()
+                        browser.switch_to.window(main_window)
+                        break
+                
+                if flag:
                     continue
 
                 atag.click()
                 self.download_click_cnt += 1
                 vendor_dict[file_name] = vendor_url
-
-                # 파일이 모두 다운로드 될 때까지 블로킹
-                while True:
-                    lst = os.listdir(self._patch_file_path)
-                    dl = False
-
-                    print("파일을 다운로드 중입니다..........")
-                    for file in lst:
-                        if file.endswith("crdownload"):
-                            dl = True
-                        else:
-                            if file != "cabs" and file[-5] == ')':
-                                os.remove(f"D:\\patch\\patchfiles\\{file}")
-                        time.sleep(1)
-
-                    if not dl:
-                        break
-                
                 browser.close()
-                browser.switch_to.window(main_window)
-
+                
+                time.sleep(2)
+            
         except Exception as e:
             print(f"\"{link}\"를 처리하던 중 에러가 발생했습니다.")
             print(e)
@@ -433,41 +452,5 @@ class DotnetCrawlingManager(CrawlingManager):
             
 
 if __name__ == "__main__":
-    # dcm = DotnetCrawlingManager()
-    # dcm.run()
-    # print(dcm._crawling_patch_title_and_summary("https://support.microsoft.com/ko-kr/help/5018210"))
-
-    # 패치 파일명 변경, 패치 파일 압축 해제, WSUSSCAN 파일명 변경 & 추출 작업
-    '''
-    path = "D:\\patch\\patchfiles"
-
-    for file_name in os.listdir(path):
-        if not file_name.startswith("windows"):
-            continue
-
-        sp = file_name.split("_")
-        new_file_name = "".join([sp[0], ".", sp[1].split(".")[1]]).replace("kb", "KB")
-
-        os.rename(path + "\\" + file_name, path + "\\" + new_file_name)
-        
-        file_abs_path = path + "\\" + new_file_name
-        file_unzip_path = file_abs_path + "\\" + new_file_name
-
-        os.mkdir(f"D:\\patch\\{new_file_name}")
-
-        cmd = "expand -f:* " + file_abs_path + " " + f"D:\\patch\\{new_file_name}"
-        print(f"명령어 실행: {cmd}")
-        os.system(cmd)
-
-        os.rename(f"D:\\patch\\{new_file_name}\\WSUSSCAN.cab", f"D:\\patch\\{new_file_name}\\{new_file_name.split('.msu')[0]}_WSUSSCAN.cab")
-    '''
-
-    with open("D:\\patch\\result.json", "r", encoding = "utf8") as fp:
-        print(fp.read())
-    
-    # CAB 파일 정리
-    cab_file_path = "D:\\patch\\patchfiles\\cabs"
-    for file in os.listdir(cab_file_path):
-        if file.endswith(".txt") or file.endswith(".xml") or "NDP" in file:
-            print(f"{file} -> 불필요한 삭제!")
-            os.remove(cab_file_path + "\\" + file)
+    dcm = DotnetCrawlingManager()
+    dcm.run()
