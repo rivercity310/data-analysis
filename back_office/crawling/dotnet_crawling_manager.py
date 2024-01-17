@@ -80,7 +80,7 @@ class DotnetCrawlingManager(CrawlingManager):
             print("-----[각 기술문서에서 Title, Summary 수집, 카탈로그 다운로드 창 오픈중...]--------")
 
             for patch_key, patch_data in data_dict.items():
-                print(f"[{patch_key} 작업을 시작합니다..]")
+                print(f"[\n\n{patch_key} 작업을 시작합니다..]")
                 global_commons[patch_key] = dict()
                 
                 # 각 라인별 공통 속성
@@ -97,29 +97,10 @@ class DotnetCrawlingManager(CrawlingManager):
                         print(f"{data_key} : {data_value}")
 
                         if data_key.startswith("catalog"):
-                            qnumber = data_key[-7:]
-                            
-                            if qnumber in self._exclude_qnumber:
-                                os_version = self._exclude_qnumber[qnumber]
-                                res = input(f"{os_version} 진행할까요? (y/n) ")
-                                
-                                if res == "n":
-                                    continue
-                            
                             print(f"Catalog Open: {data_value}")                            
                             vendor_dict = self._download_patch_file(data_value)
 
-                            while True: 
-                                dl = False
-                                for file in os.listdir(self._patch_file_path):
-                                    if file.endswith("crdownload"):
-                                        dl = True
-
-                                print("아직 파일을 다운로드 하고있어요...............")
-                                time.sleep(2)
-
-                                if not dl:
-                                    break
+                            self._wait_til_download_ended()
 
                             for file_name, vendor_url in vendor_dict.items():
                                 print(f"{file_name} : {vendor_url}")
@@ -173,10 +154,10 @@ class DotnetCrawlingManager(CrawlingManager):
 
 
             # CAB 파일 정리
-            for file in os.listdir(self.cab_file_path):
+            for file in os.listdir(self._cab_file_path):
                 if file.endswith(".txt") or file.endswith(".xml") or "NDP" in file:
                     print(f"{file} -> 불필요한 삭제!")
-                    os.remove(self.cab_file_path + "\\" + file)
+                    os.remove(self._cab_file_path / file)
 
             # TODO
             # 원본 msu 파일이랑 cab 파일 짝 맞추기?
@@ -185,8 +166,7 @@ class DotnetCrawlingManager(CrawlingManager):
             print("-----------------------[수집 완료]-----------------------")
             print("\n\n")
 
-            with open(str(self._json_file_path), "w", encoding = "utf8") as fp:
-                json.dump(global_commons, fp, indent = 4, sort_keys = True)
+            self._save_result(global_commons)
 
             while True:
                 res = input("전체 패치 파일을 다운로드 받으셨나요? (y/n) ")
@@ -235,7 +215,7 @@ class DotnetCrawlingManager(CrawlingManager):
             md5 = hashlib.md5(binary).hexdigest()
             sha256 = hashlib.sha256(binary).hexdigest()
 
-        # msu 파일 압축해제 (WSUSSCAN 파일만 )
+        # msu 파일 압축해제 (WSUSSCAN 파일만)
         cmd = f"expand -f:* {file_abs_path} {self._cab_file_path}"
         cab_file_name = file_name.split(".msu")[0] + "_WSUSSCAN.cab"
         os.system(cmd)
@@ -250,6 +230,31 @@ class DotnetCrawlingManager(CrawlingManager):
             "MD5": md5,
             "SHA256": sha256
         }
+
+
+    def _wait_til_download_ended(self):
+        while True: 
+            dl = False
+            for file in os.listdir(self._patch_file_path):
+                if file.endswith("crdownload"):
+                    dl = True
+
+            print("아직 파일을 다운로드 하고있어요...............")
+            time.sleep(2)
+
+            if not dl:
+                break
+
+
+    def _save_result(self, global_commons: dict):
+        with open(str(self._json_file_path), "w", encoding = "utf8") as fp:
+            json.dump(
+                obj = global_commons, 
+                fp = fp, 
+                indent = 4,
+                sort_keys = True, 
+                ensure_ascii = False
+            )
 
 
     def _crawling_cve_data(self, soup: BeautifulSoup):
