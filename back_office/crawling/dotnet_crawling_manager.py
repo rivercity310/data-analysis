@@ -232,31 +232,6 @@ class DotnetCrawlingManager(CrawlingManager):
         }
 
 
-    def _wait_til_download_ended(self):
-        while True: 
-            dl = False
-            for file in os.listdir(self._patch_file_path):
-                if file.endswith("crdownload"):
-                    dl = True
-
-            print("아직 파일을 다운로드 하고있어요...............")
-            time.sleep(2)
-
-            if not dl:
-                break
-
-
-    def _save_result(self, global_commons: dict):
-        with open(str(self._json_file_path), "w", encoding = "utf8") as fp:
-            json.dump(
-                obj = global_commons, 
-                fp = fp, 
-                indent = 4,
-                sort_keys = True, 
-                ensure_ascii = False
-            )
-
-
     def _crawling_cve_data(self, soup: BeautifulSoup):
         div = soup.find("div", "entry-content")
         return list(map(lambda x: re.match("CVE-\d+-\d+", x.text).group(), div.find_all(id = re.compile("^cve"))))
