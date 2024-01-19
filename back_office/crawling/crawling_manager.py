@@ -1,6 +1,7 @@
 import os
 import json
 import time
+import sys
 from bs4 import BeautifulSoup
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
@@ -37,20 +38,13 @@ class CrawlingManager:
         options.add_experimental_option("prefs", {
             "download.default_directory": str(self._patch_file_path)
         })
-
-        ''' selenium 버전 높은 경우
-        # executable_path Deprecated -> Service 객체 사용
-        self.browser = webdriver.Chrome(
-            # executable_path = self._chromeㅇ_driver_path,
-            options = self.options,
-            service = Service(executable_path = self._chrome_driver_path)
-        )
-        '''
         
-        self.browser = webdriver.Chrome(
-            executable_path = str(self._chrome_driver_path),
-            options = options
-        )
+        # selenium 버전 높은 경우 -> executable_path Deprecated -> Service 객체 사용
+        try:
+            self.browser = webdriver.Chrome(options = options, service = Service(executable_path = self._chrome_driver_path))
+        except Exception as e:
+            print("[ERR] 구버전 webdriver로 동작합니다.")
+            self.browser = webdriver.Chrome(executable_path = str(self._chrome_driver_path), options = options)
         
         self.browser.get(url)
         self.browser.implicitly_wait(5)
@@ -73,10 +67,10 @@ class CrawlingManager:
                 break
 
 
-    def _save_result(self, global_commons: dict):
+    def _save_result(self, result_dict: dict):
         with open(str(self._json_file_path), "w", encoding = "utf8") as fp:
             json.dump(
-                obj = global_commons, 
+                obj = result_dict, 
                 fp = fp, 
                 indent = 4,
                 sort_keys = True, 

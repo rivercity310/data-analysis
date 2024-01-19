@@ -11,40 +11,27 @@ import json
 import math
 
 
+# TODO
+# 1. _patch_files_path 폴더 비우기 작업 -> 완료
+# 2. 추출된 Title, Summary에서 특정 유니코드 제거 작업 (문자열화) ex. - : \u2013
+# 3. 중요도 수집
+# 4. 코드 모듈화
+# 5. CVE번호 MSRC에 검색해서 검증하기
+# 6. 제품명에 따른 다운로드 예외 처리 (https://www.catalog.update.microsoft.com/Search.aspx?q=5034119) 링크에서 Windows Server 2016 -> 완료
+# 7. 예외 발생시 수집 Title, Summary
+
+
 class DotnetCrawlingManager(CrawlingManager):
-    test_link = "https://devblogs.microsoft.com/dotnet/dotnet-framework-january-2024-security-and-quality-rollup/"
-
-
-    _exclude_patch = {
-        "Microsoft server operating system, version 23H2": "*",
-        "Windows 10 1607 and Windows Server 2016": ".NET Framework 3.5, 4.6.2, 4.7, 4.7.1, 4.7.2",
-        "Windows 10 1507": "*"
-    }
-    
-    _exclude_qnumber = {
-        "5034119": "Windows 10 1607 and Windows Server 2016"
-    }
-
-
     def __init__(self):
         super().__init__()
         
         self._cab_file_path = self._patch_file_path / "cabs"
-        self.download_click_cnt = 0
-        self.qnumbers = deque()
-        self.result_dict = dict()
         self.main_window = self.browser.window_handles[0]
+        self.result_dict = dict()
+        self.patch_info_dict = dict()
+        self.qnumbers = list()
 
-        # TODO
-        # 1. _patch_files_path 폴더 비우기 작업 -> 완료
-        # 2. 추출된 Title, Summary에서 특정 유니코드 제거 작업 (문자열화) ex. - : \u2013
-        # 3. 중요도 수집
-        # 4. 코드 모듈화
-        # 5. CVE번호 MSRC에 검색해서 검증하기
-        # 6. 제품명에 따른 다운로드 예외 처리 (https://www.catalog.update.microsoft.com/Search.aspx?q=5034119) 링크에서 Windows Server 2016 -> 완료
-        # 7. 예외 발생시 수집 Title, Summary
-
-
+    
     def run(self):
         try:
             time.sleep(3)
@@ -237,6 +224,98 @@ class DotnetCrawlingManager(CrawlingManager):
         return list(map(lambda x: re.match("CVE-\d+-\d+", x.text).group(), div.find_all(id = re.compile("^cve"))))
 
 
+    # 수집할 OS 대상, QNUMBER, CATALOG URL을 미리 수집해두고 시작
+    def _init_patch_data(self, soup: BeautifulSoup):
+        # patch_info_dict 구조
+        """
+        {
+            "Microsoft server operation system, version 22H2": {
+                ".NET Framework 3.5, 4.8": "qnumber": "....",
+                ".NET Framework 3.5, 4.8.1": "qnumber": "....",
+                ...
+            },
+            
+            ...
+        }
+        """
+        time.sleep(3)
+        
+        patch_info_dict = self.patch_info_dict
+        qnumbers = self.qnumbers
+        numbering = dict()
+        cnt = 1
+
+        table = soup.find("table")
+        tbody = table.find("tbody")
+        tds = tbody.find_all("td") 
+        
+        last_product_key = ""
+        last_dotnet_key = ""
+        
+        for td in tds:
+            tstrip = td.text.strip()
+            is_parent_kb = td.find("strong") != None and tstrip.startswith("50")
+            
+            # 공란 무시
+            if tstrip == "":
+                continue
+            
+            # KBNumber 중 Bold 처리된 것은 부모 KBNumber이므로 무시
+            if is_parent_kb:
+                continue
+            
+            # Microsoft 혹은 Windows로 시작하면 Product Version을 나타냄
+            if tstrip.startswith("Microsoft") or tstrip.startswith("Windows"):
+                patch_info_dict[tstrip] = dict()
+                last_product_key = tstrip
+            
+            # .NET으로 시작하면 .NET 버전을 나타냄
+            elif tstrip.startswith(".NET"):
+                if last_product_key == "":
+                    raise Exception("[ERR] 마지막으로 검색된 Product Version이 존재하지 않습니다.")
+                
+                patch_info_dict[last_product_key][tstrip] = dict()
+                last_dotnet_key = tstrip
+                numbering[cnt] = tstrip
+                cnt += 1
+            
+            # 자식 KBNumber인 경우
+            elif re.match("^50\d{5}", tstrip):
+                if last_product_key == "" or last_dotnet_key == "":
+                    raise Exception("[ERR] 마지막으로 검색된 Product Version 혹은 .NET Version이 존재하지 않습니다.")
+                
+                if tstrip not in qnumbers:
+                    qnumbers.append(tstrip)
+
+                patch_info_dict[last_product_key][last_dotnet_key] = tstrip
+
+        # 프롬프트 출력       
+        num = 1
+
+        while True:
+            print("-------------------- 패치 대상 정보가 수집되었습니다 ----------------------")
+            for product in patch_info_dict:
+                for data in patch_info_dict[product]:
+                    qnumber = patch_info_dict[product][data]
+                    print(f"{num}. {product} {data} ({qnumber})")
+                    num += 1
+            print("------------------------------------------------------------------------")
+
+            res = input("제외할 패치의 번호를 입력해주세요. (여러개인 경우 ','로 구분하여 입력) : ")
+
+            # TODO 번호 삭제하기 기능 구현 (현재 오작동)
+            if res.find(",") != -1:
+                lst = res.split(",")
+
+                for num in lst:
+                    del patch_info_dict[numbering[int(num)]]
+
+            else:
+                del patch_info_dict[numbering[int(res)]]
+
+            break
+        
+    
     def _crawling_patch_data(self, soup: BeautifulSoup):
         table = soup.find("table")
         tbody = table.find("tbody")
@@ -429,8 +508,12 @@ class DotnetCrawlingManager(CrawlingManager):
             browser.switch_to.window(browser.window_handles[0])
 
         return vendor_dict
+    
+
+    def test(self):
+        self._init_patch_data(self.soup)
             
 
 if __name__ == "__main__":
     dcm = DotnetCrawlingManager()
-    dcm.run()
+    dcm.test()
