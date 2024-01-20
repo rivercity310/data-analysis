@@ -1,11 +1,11 @@
 from crawling_manager import CrawlingManager
 from bs4 import BeautifulSoup
+from selenium.webdriver.remote.webelement import WebElement
 from selenium.webdriver.common.by import By
-from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver.support.ui import WebDriverWait
-from collections import deque
+from selenium.webdriver.common.keys import Keys
 from datetime import datetime
 from typing import List, Set, Dict, Tuple
+from pathlib import Path
 import re
 import time
 import os
@@ -29,168 +29,12 @@ class DotnetCrawlingManager(CrawlingManager):
         super().__init__()
         
         self._cab_file_path = self._patch_file_path / "cabs"
-        self.main_window = self.driver.window_handles[0]
-        self.result_dict = dict()
+        self.qnumbers: Dict[str, Tuple[str, str, BeautifulSoup]] = dict()
         self.patch_info_dict: Dict[str, Dict[str, str]] = dict()
-        self.qnumbers = list()
-
-        print(".NET Crawler 초기화")
-
-    
-    def run(self):
-        try:
-            time.sleep(3)
-            self.driver.implicitly_wait(5)
-            print("\n\n")
-            print("-------------------- 닷넷 크롤러를 작동합니다 ---------------------------------")
-            soup = self.soup
-
-            # 전체 공통 속성 
-            # PatchDate, CVE
-            global_commons = dict()
-    
-            print("-----------[패치 노트 CVE 목록 수집중...]--------------")
-            cve_list = self._crawling_cve_data(soup)
-            print(",".join(cve_list))
-            print("-----------[CVE 목록 수집 완료]-----------------------")
-            print("\n\n")
-
-            print("------[catalog url, qnumber, bulletin url 수집중...]-----")
-            patch_data_dict = self._crawling_patch_data(soup)
-            print("-----------------------[수집 완료]-----------------------")
-            print("\n\n")
-                
-            global_commons["commons"] = dict()
-            global_commons["commons"]["PatchDate"] = datetime.today().strftime("%Y/%m/%d")
-            global_commons["commons"]["cve"] = ",".join(cve_list)
-
-            # 빈 리스트 키 삭제 & 딥카피
-            data_dict = dict(filter(lambda val: len(val[1]) != 0, patch_data_dict.items()))
-            del patch_data_dict
-
-            # 각 기술문서 들어가서 제목 수집, 카탈로그 들어가서 패치파일 다운로드, 파일 이름 변경
-            print("-----[각 기술문서에서 Title, Summary 수집, 카탈로그 다운로드 창 오픈중...]--------")
-
-            for patch_key, patch_data in data_dict.items():
-                print(f"[\n\n{patch_key} 작업을 시작합니다..]")
-                global_commons[patch_key] = dict()
-                
-                # 각 라인별 공통 속성
-                # BulletinID, KBNumber, 중요도
-                local_commons = dict()
-                last_qnum = ""
-
-                # 각 라인 내에서 국가별로 다른 속성
-                # title, summary, bulletinUrl
-                diff = dict()
-
-                for patch in patch_data:
-                    for data_key, data_value in patch.items():  
-                        print(f"{data_key} : {data_value}")
-
-                        if data_key.startswith("catalog"):
-                            print(f"Catalog Open: {data_value}")                            
-                            vendor_dict = self._download_patch_file(data_value)
-
-                            self._wait_til_download_ended()
-
-                            for file_name, vendor_url in vendor_dict.items():
-                                print(f"{file_name} : {vendor_url}")
-
-                                # 여기서 가공해야 함 key = file_name, value = SHA256, MD5, vendor_url, file_size, wsusscan
-                                sp = file_name.split("_")
-                                new_file_name = "".join([sp[0], ".", sp[1].split(".")[1]]).replace("kb", "KB")
-
-                                print(f"[파일명 변경] {file_name} -> {new_file_name}")
-                                file_abs_path = f"{self._patch_file_path}\\{new_file_name}"
-
-                                try:
-                                    os.rename(f"{self._patch_file_path}\\{file_name}", file_abs_path)
-                                
-                                except Exception as e:
-                                    print("--------파일명 변경 중 에러 발생!! (중복된 파일)------------")
-                                    print(f"중복된 파일 \"{file_name}\" 삭제합니다.")
-                                    os.remove(f"{self._patch_file_path}\\{file_name}")
-                                    continue
-
-                                global_commons[patch_key][new_file_name] = self.extract_file_info(new_file_name, vendor_url) 
-
-                            qnum = data_value[-7:]
-                            local_commons[qnum] = dict()
-                            local_commons[qnum]["Bulletine ID"] = f"MS-KB{qnum}"
-                            local_commons[qnum]["KBNumber"] = f"KB{qnum}"
-                            local_commons[qnum]["중요도"] = "???"       
-                            last_qnum = qnum
-                
-                        elif data_key.startswith("bulletin"):
-                            print(f"기술문서 Open: {data_value}")
-                            title, summary = self._crawling_patch_title_and_summary(data_value)
-                            print(f"title: {title}")
-                            print(f"summary: {summary}")
-                            
-                            diff[last_qnum] = dict()
-                            postfix = data_key[-3:] # _kr, _en ..
-                            
-                            bulletin_key = "BulletinUrl" + postfix
-                            title_key = "Title" + postfix
-                            summary_key = "Summary" + postfix
-                            
-                            diff[last_qnum][bulletin_key] = data_value
-                            diff[last_qnum][title_key] = title
-                            diff[last_qnum][summary_key] = summary
-
-                global_commons[patch_key]["local_commons"] = local_commons
-                global_commons[patch_key]["diff"] = diff
-
-                print(global_commons)
+        self.error_patch_dict = dict()
 
 
-            # CAB 파일 정리
-            for file in os.listdir(self._cab_file_path):
-                if file.endswith(".txt") or file.endswith(".xml") or "NDP" in file:
-                    print(f"{file} -> 불필요한 삭제!")
-                    os.remove(self._cab_file_path / file)
-
-            # TODO
-            # 원본 msu 파일이랑 cab 파일 짝 맞추기?
-
-
-            print("-----------------------[수집 완료]-----------------------")
-            print("\n\n")
-
-            self._save_result(global_commons)
-
-            while True:
-                res = input("전체 패치 파일을 다운로드 받으셨나요? (y/n) ")
-                
-                if res != "y":
-                    continue
-
-                if os.path.exists(self._patch_file_path):
-                    # TODO
-                    # 조건을 KB번호에 일치하는 파일이 다 있는지 검사하는 걸로 변경 예정
-                    if self.download_click_cnt == len(os.listdir()):
-                        print("전체 파일 다운로드가 확인되었습니다.")
-                        break
-                
-                print(f"다운로드 횟수: {self.download_click_cnt}")
-
-        except Exception as e:
-            print("--------------- 처리되지 않은 예외 발생 --------------")
-            print(e)
-            print("--------------- 프로그램이 비정상적으로 종료되었습니다.")
-
-            # TODO
-            # 추후 패치파일 다운로드 폴더 삭제 및 데이터 해제 작업 진행
-            # self.rollback()
-
-        finally:
-            del self
-            # self.write_result()
-            print("수집된 패치 파일에 대해 V3 정밀 검사를 진행해주세요.")
-
-
-    def extract_file_info(self, file_name, vendor_url):
+    def _extract_file_info(self, file_name, vendor_url):
         time.sleep(3)
 
         file_abs_path = self._patch_file_path / file_name
@@ -224,113 +68,12 @@ class DotnetCrawlingManager(CrawlingManager):
         }
 
 
-    def _crawling_cve_data(self, soup: BeautifulSoup):
-        div = soup.find("div", "entry-content")
-        return list(map(lambda x: re.match("CVE-\d+-\d+", x.text).group(), div.find_all(id = re.compile("^cve"))))
-
+    def _get_cve_string(self):
+        div = self.soup.find("div", "entry-content")
+        cve_list = list(map(lambda x: re.match("CVE-\d+-\d+", x.text).group(), div.find_all(id = re.compile("^cve"))))
+        return ",".join(cve_list)
 
         
-    def _crawling_patch_data(self, soup: BeautifulSoup):
-        table = soup.find("table")
-        tbody = table.find("tbody")
-        tds = tbody.find_all("td")
-
-        tmp = dict()
-
-        # TODO
-        # 추후 sorted_set으로 변경 예정
-        last_keys = set()
-        last_key = ""
-        last_exclude_key = ""
-        excluded = list()
-
-        for td in tds:
-            # 공백 td 제거
-            tstrip = td.text.strip()
-
-            if tstrip == "":
-                continue
-
-            # Microsoft | Windows로 시작하면 Product Version
-            if tstrip.startswith("Microsoft") or tstrip.startswith("Windows"):
-                product_version = tstrip
-
-                if product_version in self._exclude_patch:
-                    if self._exclude_patch[product_version] == "*":
-                        print(f"****{product_version} 전체 제외합니다.")
-                        last_exclude_key = product_version
-                        excluded.append({last_exclude_key: "*"})
-                        continue
-
-                    last_exclude_key = product_version
-                
-                last_key = product_version
-                tmp[last_key] = list()
-                
-            # product version의 특정 닷넷 패치를 제외
-            if tstrip.startswith(".NET"):
-                dotnet_version = tstrip
-                
-                if last_exclude_key in self._exclude_patch:
-                    if dotnet_version == self._exclude_patch[last_exclude_key]:
-                        print(f"****[{last_exclude_key} : {dotnet_version}] 제외합니다.")
-                        excluded.append({last_exclude_key: dotnet_version})
-                        last_exclude_key = ""
-                        continue
-            
-            if last_key == "":
-                continue
-
-            last_keys.add(last_key)
-
-            # 숫자로 시작하면 qnumber
-            if re.match("^\d{7}", td.text):
-                qnumber = td.text
-
-                if td.find("strong") != None:
-                    print(f"****부모 QNumber 제외합니다. {qnumber}")
-                    continue
-
-                if qnumber in self.qnumbers:
-                    print(f"****이미 처리된 QNumber 제외합니다. {qnumber}")
-                    continue
-
-                # 카탈로그 링크: http://www.catalog.update.microsoft.com/Search.aspx?q={qnumber}
-                # 기술문서 링크: http://support.microsoft.com/{nation-code}/help/{qnumber}
-                print(f"[타겟 QNumber를 발견했습니다]: {qnumber}")
-
-                tmp[last_key].append({
-                    "catalog_link": f"https://www.catalog.update.microsoft.com/Search.aspx?q={qnumber}",
-                    "bulletin_url_kr": f"https://support.microsoft.com/ko-kr/help/{td.text}",
-                    "bulletin_url_jp": f"https://support.microsoft.com/ja-jp/help/{td.text}",
-                    "bulletin_url_us": f"https://support.microsoft.com/en-us/help/{td.text}",
-                    "bulletin_url_cn": f"https://support.microsoft.com/zh-cn/help/{td.text}",
-                })
-
-                self.qnumbers.append(qnumber)
-
-        print("------------------- 수집 대상 OS ----------------------------")
-        for idx, key in enumerate(last_keys):
-            print(f"{idx + 1}. {key}")
-        print("-----------------------------------------------------------------")
-        print("\n\n")
-        
-        print("------------------- 수집 대상 QNumber ----------------------------")
-        for idx, qnumber in enumerate(self.qnumbers):
-            print(f"{idx + 1}. {qnumber}")
-        print("-----------------------------------------------------------------")
-        print("\n\n")
-        
-        print("------------------- 수집 제외 .NET 버전 ----------------------------")
-        for idx, dt in enumerate(excluded):
-            print(f"{idx + 1}. {dt}")
-        print("-----------------------------------------------------------------")
-        print("\n\n")
-        
-        
-        return tmp
-    
-
     def _crawling_patch_title_and_summary(self, url):
         try:
             self.driver.get(url)
@@ -354,74 +97,102 @@ class DotnetCrawlingManager(CrawlingManager):
         return title, summary
 
 
-    def _download_patch_file(self, link: str):
+    def _download_patch_file(self) -> Dict[str, str]:
         driver = self.driver
-        vendor_dict = dict()
+        file_dict = dict()
         
-        try:
-            driver.get(link)
-            table = driver.find_element(by = By.CLASS_NAME, value = "resultsBorder")
-            trs = table.find_elements(by = By.TAG_NAME, value = "tr")[1:]
-            download_path = self._patch_file_path
-            main_window = driver.current_window_handle
+        for qnumber, value in self.qnumbers.items():
+            product_version = value[0]
+            dotnet_version = value[1]
+            catalog_elem = value[2]
 
-            for tr in trs:
-                tds = tr.find_elements(by = By.TAG_NAME, value = "td")[1:]
-                title = tds[0].text
-                product = tds[1].text
-                
-                if "Windows Server 2019" in product or "Windows Server 2016" in product:
-                    print(f"{product} 건너뜁니다.")
-                    continue
-                
-                print(f"{title} 클릭")
-                download_link = tds[-1]
-                download_link.click()
-                time.sleep(2)
+            file_dict[qnumber] = list()
+            self.error_patch_dict[qnumber] = list()            
 
-            while len(driver.window_handles) != 1:
-                driver.switch_to.window(driver.window_handles[-1]) 
+            try:
+                link = str(catalog_elem['href'])
+                driver.get(link)
+                self._driver_wait(By.CLASS_NAME, "resultsBorder")
+                main_window = driver.current_window_handle
 
-                time.sleep(2)
+                table: WebElement = driver.find_element(by = By.CLASS_NAME, value = "resultsBorder")
+                trs: List[WebElement] = table.find_elements(by = By.TAG_NAME, value = "tr")[1:]
 
-                # 열린 다운로드 창에서 파일 다운로드 받기
-                atag = driver.find_element(by = By.XPATH, value = "//*[@id=\"downloadFiles\"]/div[2]/a")
-                vendor_url = atag.get_attribute('href')
-                file_name = atag.text
-                print(f"{file_name}: {vendor_url} 다운로드를 시도합니다.")
+                os.system("cls")
 
-                flag = False
-                for dir_file_name in os.listdir(download_path):
-                    if dir_file_name.startswith(file_name):
-                        flag = True
-                        print(f"[{file_name}] 이미 존재하는 파일은 건너뜁니다.")
+                print(f"[{product_version} {dotnet_version}] 다운로드 작업 시작")
+                print("link: ", link)
+
+                for tr in trs:
+                    self._driver_wait(By.TAG_NAME, "td")
+                    tds: List[WebElement] = tr.find_elements(by = By.TAG_NAME, value = "td")[1:]
+                    tds[-1].click()
+                    time.sleep(2)
+
+                while len(driver.window_handles) != 1:
+                    driver.switch_to.window(driver.window_handles[-1])
+
+                    # 열린 다운로드 창에서 파일 다운로드 받기
+                    xpath = "//*[@id=\"downloadFiles\"]/div[2]/a"
+                    self._driver_wait(By.XPATH, xpath)
+                    
+                    atag: WebElement = driver.find_element(by = By.XPATH, value = xpath)
+                    vendor_url = atag.get_attribute('href')
+                    file_name = self._msu_file_name_change(atag.text)
+
+                    if self._is_already_exists(atag.text):
+                        print("\n\t[INFO] 중복된 파일 제외")
+                        print(f"\t{file_name}")
                         driver.close()
-                        driver.switch_to.window(main_window)
-                        break
-                
-                if flag:
-                    continue
+                        continue
+                    
+                    atag.click()
 
-                atag.click()
-                self.download_click_cnt += 1
-                vendor_dict[file_name] = vendor_url
-                driver.close()
+                    print("\n\t------------ [Downloading] ---------------")
+                    print(f"\t[파일명] {file_name}")
+                    print(f"\t[Vendor URL] {vendor_url}")
+                    print("\t--------------------------------------------\n")
+                    
+                    file_dict[qnumber].append({
+                        "file_name": file_name,
+                        "vendor_url": vendor_url,
+                        "catalog": link,
+                        "product": product_version,
+                        "version": dotnet_version,
+                    })
+
+                    time.sleep(4)
+                    driver.close()
                 
-                time.sleep(2)
-            
-        except Exception as e:
-            print(f"\"{link}\"를 처리하던 중 에러가 발생했습니다.")
-            print(e)
+                # 다시 main window로 전환 (카탈로그 창)
+                driver.switch_to.window(main_window)
+                
+                # 다운로드 완료 대기 
+                self._wait_til_download_ended()
+
+            except Exception as e:
+                print(f"\"{link}\"를 처리하던 중 에러가 발생했습니다.")
+                print(e)
+
+                self.error_patch_dict[qnumber].append({
+                    "product": product_version,
+                    "version": dotnet_version,
+                    "catalog": link,
+                    "message": e
+                })
+
+                continue
         
-        finally:
-            for handle in driver.window_handles[1:]:
-                driver.switch_to.window(handle)
-                driver.close()
-                del handle
+            finally:
+                # msu 파일명 전부 변경
+                print("\n[INFO] .msu 파일명에서 해시값 제거")
 
-            driver.switch_to.window(driver.window_handles[0])
+                for file in os.listdir(self._patch_file_path):
+                    renamed = self._msu_file_name_change(file)
+                    os.rename(self._patch_file_path / file, self._patch_file_path / renamed)
+                    print(f"\t{file} -> {renamed}")
 
-        return vendor_dict
+        return file_dict
     
 
     # 수집할 OS 대상, QNUMBER, CATALOG URL을 미리 수집해두고 시작
@@ -429,11 +200,11 @@ class DotnetCrawlingManager(CrawlingManager):
         # patch_info_dict 구조
         """
         {
-            "Microsoft server operation system, version 22H2": {
-                ".NET Framework 3.5, 4.8": "5033912",
-                ".NET Framework 3.5, 4.8.1": "5033914",
+            "Microsoft server operation system, version 22H2": [
+                (".NET Framework 3.5, 4.8", "5033912"),
+                (".NET Framework 3.5, 4.8.1", "5033914")
                 ...
-            },
+            ],
             
             ...
         }
@@ -443,13 +214,12 @@ class DotnetCrawlingManager(CrawlingManager):
         soup = self.soup
         qnumbers = self.qnumbers
 
-        # self._driver_wait(By.TAG_NAME, "table")
-
         tbody: BeautifulSoup = soup.find("table").find("tbody")
         tds: List[BeautifulSoup] = tbody.find_all("td") 
         
         last_product_key = ""
         last_dotnet_key = ""
+        last_catalog_link = ""
         
         for td in tds:
             tstrip = td.text.strip()
@@ -465,16 +235,20 @@ class DotnetCrawlingManager(CrawlingManager):
             
             # Microsoft 혹은 Windows로 시작하면 Product Version을 나타냄
             if tstrip.startswith("Microsoft") or tstrip.startswith("Windows"):
-                patch_info_dict[tstrip] = dict()
-                last_product_key = tstrip
+                patch_info_dict[tstrip] = list()
+                last_product_key = tstrip 
             
             # .NET으로 시작하면 .NET 버전을 나타냄
             elif tstrip.startswith(".NET"):
                 if last_product_key == "":
                     raise Exception("[ERR] 마지막으로 검색된 Product Version이 존재하지 않습니다.")
                 
-                patch_info_dict[last_product_key][tstrip] = dict()
                 last_dotnet_key = tstrip
+
+            # Catalog 링크 수집
+            elif tstrip.startswith("Catalog"):
+                href = td.findChild("a")
+                last_catalog_link = href
             
             # 자식 KBNumber인 경우
             elif re.match("^50\d{5}", tstrip):
@@ -482,36 +256,124 @@ class DotnetCrawlingManager(CrawlingManager):
                     raise Exception("[ERR] 마지막으로 검색된 Product Version 혹은 .NET Version이 존재하지 않습니다.")
                 
                 if tstrip not in qnumbers:
-                    qnumbers.append(tstrip)
+                    qnumbers[tstrip] = (last_product_key, last_dotnet_key, last_catalog_link)
+                    patch_info_dict[last_product_key].append((last_dotnet_key, tstrip))
 
-                patch_info_dict[last_product_key][last_dotnet_key] = tstrip
-
-
-    def test(self):
-        self._init_patch_data()
+        # 빈 Product Version 삭제
+        tmp = list()
+        for product in patch_info_dict:
+            if len(patch_info_dict[product]) == 0:
+                tmp.append(product)
         
-        # 프롬프트 출력       
+        for product in tmp:
+            del patch_info_dict[product]
+        
+
+    def _show_prompt(self) -> None:
+        def _remove_patch(removed: str):
+            if removed not in self.qnumbers:
+                print(f"[{removed}] 목록에 없는 QNumber 입니다.")
+                return
+
+            info = self.qnumbers[removed]
+            product_version = info[0]
+            dotnet_version = info[1]
+            tmp = list()
+
+            for tup in self.patch_info_dict[product_version]:
+                if tup[1] == removed:
+                    self.patch_info_dict[product_version].remove((dotnet_version, removed))
+
+                    if len(self.patch_info_dict[product_version]) == 0:
+                        tmp.append(product_version)
+
+            for t in tmp:
+                del self.patch_info_dict[t]
+
+            del self.qnumbers[removed]
+
         patch_info_dict = self.patch_info_dict
-        num = 1
 
         while True:
-            print("-------------------- 패치 대상 정보가 수집되었습니다 ----------------------")
+            print("\n\n-------------------- 패치 대상 정보가 수집되었습니다 ----------------------")
             for product in patch_info_dict:
+                print(product)
                 for data in patch_info_dict[product]:
-                    qnumber = patch_info_dict[product][data]
-                    print(f"{num}. {product} {data} ({qnumber})")
-                    num += 1
-            print("------------------------------------------------------------------------")
+                    version = data[0]
+                    qnumber = data[1]
+                    print(f"\t[{qnumber}] {version}")
+                print()
+            print("------------------------------------------------------------------------\n\n")
 
-            res = input("제외할 패치의 번호를 입력해주세요. (여러개인 경우 ','로 구분하여 입력) : ")
-            break
+            res = input("제외할 패치의 QNumber를 입력해주세요. (여러개인 경우 ','로 구분하여 입력하고 없으면 'n' 입력) : ")
 
-        self._del_driver()
+            if res == 'n':
+                break
+
+            for removed in res.split(","):
+                print(f"[removed] {removed.strip()} 삭제")
+                _remove_patch(removed.strip())
+
+
+    def _get_patch_date(self) -> str:
+        date_elem = self.soup.find("em").find("strong")
         
-            
+        if date_elem == None:
+            raise Exception("패치 날짜 정보를 가져올 수 없습니다.")
+        
+        date = date_elem.text[1:-1].strip().split("/")
+        return f"{date[-1]}/{date[0]}/{int(date[1]) + 1}"
+
+
+    def test(self) -> None:
+        # 패치 대상 데이터 초기화
+        self._init_patch_data()
+        
+        # 프롬프트 출력, 패치 대상 데이터 최종 결정(제거)
+        self._show_prompt()
+        os.system("pause")
+        
+        # 프롬프트 창 clear
+        os.system("cls")
+
+        # 패치 날짜 정보 가져오기 (TODO 문서마다 다름)
+        print("------------------------------------------")
+        # patch_date = self._get_patch_date()
+        # print("[Patch Date]", patch_date)
+
+        # 패치 CVE 문자열 가져오기
+        # 이 이후로 soup 객체를 사용하지 않으므로 메모리 해제
+        cve_string = self._get_cve_string()
+        print("[CVE List]", cve_string)
+        del self.soup
+        print("------------------------------------------\n\n")
+
+        # 패치 대상의 각 카탈로그 링크에서 패치 파일 다운로드
+        # 각 패치 파일 이름과 vendor URL에 대한 Dict 반환
+        file_dict = self._download_patch_file()
+
+        print("\n[INFO] 패치 파일 다운로드 작업 완료")
+        self._save_result(self._crawling_dir_path / "file_dict.json", file_dict)
+
+        print(self.error_patch_dict)
+        for key in self.error_patch_dict:
+            print("--------------------------------------")
+            print(key, ": ")
+
+            for params in self.error_patch_dict[key]:
+                for param in params:
+                    print(f"\t{param}: {params[param]}")
+
+            print("--------------------------------------")
+
+        # 메모리 해제
+        self._del_driver()
+
+    
+    def _msu_file_name_change(self, name: str) -> str:
+        return name.split("_")[0].replace("kb", "KB") + ".msu" 
+        
 
 if __name__ == "__main__":
     dcm = DotnetCrawlingManager()
     dcm.test()
-
-    print(__annotations__)

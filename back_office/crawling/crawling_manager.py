@@ -1,7 +1,6 @@
 import os
 import json
 import time
-import sys
 from bs4 import BeautifulSoup
 from selenium import webdriver
 from selenium.webdriver import ActionChains
@@ -24,6 +23,8 @@ class CrawlingManager:
 
 
     def __init__(self):
+        os.system("cls")
+
         # patchfiles 폴더 비어있는지 검사 
         while True:
             if len(os.listdir(self._patch_file_path)) == 0:
@@ -48,7 +49,7 @@ class CrawlingManager:
         try:
             self.driver = webdriver.Chrome(options = options, service = Service(executable_path = self._chrome_driver_path))
         except Exception as _:
-            print("[ERR] 구버전 webdriver로 동작합니다.")
+            print("[WARN] 구버전 webdriver로 동작합니다.")
             self.driver = webdriver.Chrome(executable_path = str(self._chrome_driver_path), options = options)
         
         # Get 요청 후 HTML 파싱
@@ -59,6 +60,15 @@ class CrawlingManager:
         print("HTML parsing OK")
 
 
+    # patchfiles 폴더에 중복된 파일이 있는지 검사
+    def _is_already_exists(self, name) -> bool:
+        for file in os.listdir(self._patch_file_path):
+            if file.startswith(name):
+                return True
+        
+        return False
+
+
     def _wait_til_download_ended(self):
         while True: 
             dl = False
@@ -66,15 +76,14 @@ class CrawlingManager:
                 if file.endswith("crdownload"):
                     dl = True
 
-            print("아직 파일을 다운로드 하고있어요...............")
-            time.sleep(2)
+            time.sleep(1)
 
             if not dl:
                 break
 
 
-    def _save_result(self, result_dict: dict):
-        with open(str(self._json_file_path), "w", encoding = "utf8") as fp:
+    def _save_result(self, file_name: str, result_dict: dict):
+        with open(file_name, "w", encoding = "utf8") as fp:
             json.dump(
                 obj = result_dict, 
                 fp = fp, 
@@ -103,6 +112,8 @@ class CrawlingManager:
                 f"[ERR] Can't Find {by}, {name}"            
             )
 
+            time.sleep(1)
+
         except Exception as e:
             print(e)
             self._del_driver()
@@ -115,12 +126,9 @@ class CrawlingManager:
             del self
         
         except Exception as _:
-            print("[ERR] 메모리 해제 작업...")
-            return
-        
-        finally:
-            print("프로그램을 종료합니다....")
+            pass
 
 
 if __name__ == "__main__":
-    cm = CrawlingManager()
+    # cm = CrawlingManager()
+    print(CrawlingManager._patch_file_path.as_posix())
