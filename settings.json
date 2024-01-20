@@ -1,0 +1,19 @@
+/* pylance 설정 파일 */
+
+{
+    "python.analysis.typeCheckingMode": "strict",
+
+    "python.analysis.autoImportCompletions": true,
+
+    "python.analysis.inlayHints.variableTypes": true,
+
+    "python.analysis.inlayHints.functionReturnTypes": true,
+
+    "python.analysis.inlayHints.callArgumentNames": true,
+
+    /* "python.analysis.diagnosticMode": "workspace", */
+
+    /* "python.analysis.include": ["**"], */
+
+    "python.languageServer": "Default"
+}

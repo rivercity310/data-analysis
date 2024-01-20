@@ -4,7 +4,12 @@ import time
 import sys
 from bs4 import BeautifulSoup
 from selenium import webdriver
+from selenium.webdriver import ActionChains
 from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.common.by import By
+from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.support.ui import WebDriverWait
 from pathlib import Path
 
 
@@ -18,7 +23,7 @@ class CrawlingManager:
     _chrome_driver_path = _crawling_dir_path / "chromedriver.exe"
 
 
-    def __init__(self, test_link = None):
+    def __init__(self):
         # patchfiles 폴더 비어있는지 검사 
         while True:
             if len(os.listdir(self._patch_file_path)) == 0:
@@ -41,15 +46,16 @@ class CrawlingManager:
         
         # selenium 버전 높은 경우 -> executable_path Deprecated -> Service 객체 사용
         try:
-            self.browser = webdriver.Chrome(options = options, service = Service(executable_path = self._chrome_driver_path))
-        except Exception as e:
+            self.driver = webdriver.Chrome(options = options, service = Service(executable_path = self._chrome_driver_path))
+        except Exception as _:
             print("[ERR] 구버전 webdriver로 동작합니다.")
-            self.browser = webdriver.Chrome(executable_path = str(self._chrome_driver_path), options = options)
+            self.driver = webdriver.Chrome(executable_path = str(self._chrome_driver_path), options = options)
         
-        self.browser.get(url)
-        self.browser.implicitly_wait(5)
-        self.soup = BeautifulSoup(self.browser.page_source, "html.parser")
-
+        # Get 요청 후 HTML 파싱
+        self.driver.get(url)
+        self._load_all_page()
+        self.soup = BeautifulSoup(self.driver.page_source, "html.parser")
+        
         print("HTML parsing OK")
 
 
@@ -78,13 +84,43 @@ class CrawlingManager:
             )
 
 
-if __name__ == "__main__":
-    # cm = CrawlingManager()
+    # 동적 페이지의 경우 로딩을 위해 전체 페이지 탐색 
+    def _load_all_page(self):
+        chains = ActionChains(self.driver)
 
-    print(Path(__file__))
-    print(Path(__file__).home())
-    print(Path(__file__).cwd())
-    print(Path(__file__).stat())
-    print(Path(__file__).parent)
-    print(str(CrawlingManager._patch_file_path))
-    print(CrawlingManager._patch_file_path / "cabs")
+        for _ in range(10):
+            chains.send_keys(Keys.PAGE_DOWN).perform()
+            time.sleep(0.5)
+
+        chains.send_keys(Keys.HOME).perform()
+        time.sleep(1)
+
+
+    def _driver_wait(self, by: By, name: str):
+        try:
+            WebDriverWait(self.driver, 10).until(
+                EC.presence_of_element_located((by, name)),
+                f"[ERR] Can't Find {by}, {name}"            
+            )
+
+        except Exception as e:
+            print(e)
+            self._del_driver()
+
+
+    def _del_driver(self):
+        try:
+            del self.soup
+            del self.driver
+            del self
+        
+        except Exception as _:
+            print("[ERR] 메모리 해제 작업...")
+            return
+        
+        finally:
+            print("프로그램을 종료합니다....")
+
+
+if __name__ == "__main__":
+    cm = CrawlingManager()
