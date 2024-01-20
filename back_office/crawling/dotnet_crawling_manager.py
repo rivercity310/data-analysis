@@ -8,6 +8,7 @@ import re
 import time
 import os
 import hashlib
+import shutil
 
 
 # TODO
@@ -59,12 +60,15 @@ class DotnetCrawlingManager(CrawlingManager):
                     "WSUS 파일": cab_file_name
                 })
         
+        print(file_dict)
+
         # 불필요한 파일 삭제
         for file in os.listdir(self._cab_file_path):
-            if file.endswith(".xml") or file.endswith(".txt") or "NDP" in file:
-                os.remove(self._cab_file_path / file)
+            if file.endswith("_WSUSSCAN.cab"):
+                continue
 
-        print(file_dict)
+            os.remove(self._cab_file_path / file)
+            print(f"[Delete] {self._cab_file_path / file}")
 
     
     def _unzip_msu_file(self, file_name: str) -> str:
@@ -75,16 +79,17 @@ class DotnetCrawlingManager(CrawlingManager):
 
         # msu 파일 압축해제 (WSUSSCAN 파일만)
         cmd = f"expand -f:* {file_abs_path} {self._cab_file_path}"
-        cab_file_name = file_name.split(".msu")[0] + "_WSUSSCAN.cab"
         os.system(cmd)
         time.sleep(3)
 
         try:
+            cab_file_name = file_name.split(".msu")[0] + "_WSUSSCAN.cab"
             os.rename(self._cab_file_path / "WSUSSCAN.cab", self._cab_file_path / cab_file_name)
         
-        except FileExistsError as e:
+        except FileExistsError as e:    
             print(e)
             return "err"
+        
 
         return cab_file_name
 
@@ -158,35 +163,42 @@ class DotnetCrawlingManager(CrawlingManager):
                     driver.switch_to.window(driver.window_handles[-1])
 
                     # 열린 다운로드 창에서 파일 다운로드 받기
-                    xpath = "//*[@id=\"downloadFiles\"]/div[2]/a"
+                    xpath = "//*[@id=\"downloadFiles\"]"
                     self._driver_wait(By.XPATH, xpath)
                     
-                    atag: WebElement = driver.find_element(by = By.XPATH, value = xpath)
-                    vendor_url = atag.get_attribute('href')
+                    box: WebElement = driver.find_element(by = By.XPATH, value = xpath)
+                    divs = box.find_elements(by = By.TAG_NAME, value = "div")[1:]
+
+                    for div in divs:
+                        atag = div.find_element(by = By.TAG_NAME, value = "a")
+                        vendor_url = atag.get_attribute('href')
+                        
+                        if self._is_already_exists(atag.text.split("_")[0]):
+                            print("\n\t[INFO] 중복된 파일 제외")
+                            print(f"\t{atag.text}")
+                            continue
+                        
+                        time.sleep(1)
+
+                        atag.click()
+
+                        file_name = self._msu_file_name_change(atag.text)
+
+                        print("\n\t------------ [Downloading] ---------------")
+                        print(f"\t[파일명] {file_name}")
+                        print(f"\t[Vendor URL] {vendor_url}")
+                        print("\t--------------------------------------------\n")
+
+                        file_dict[qnumber].append({
+                            "file_name": file_name,
+                            "vendor_url": vendor_url,
+                            "product": product_version,
+                            "architecture": self._get_architecture(file_name)
+                        })
+
+                        time.sleep(4)
                     
-                    if self._is_already_exists(atag.text.split("_")[0]):
-                        print("\n\t[INFO] 중복된 파일 제외")
-                        print(f"\t{atag.text}")
-                        driver.close()
-                        continue
-                    
-                    atag.click()
-
-                    file_name = self._msu_file_name_change(atag.text)
-
-                    print("\n\t------------ [Downloading] ---------------")
-                    print(f"\t[파일명] {file_name}")
-                    print(f"\t[Vendor URL] {vendor_url}")
-                    print("\t--------------------------------------------\n")
-
-                    file_dict[qnumber].append({
-                        "file_name": file_name,
-                        "vendor_url": vendor_url,
-                        "product": product_version,
-                        "architecture": self._get_architecture(file_name)
-                    })
-
-                    time.sleep(4)
+                    # 다운로드 창 닫기
                     driver.close()
                 
                 # 다시 main window로 전환 (카탈로그 창)
@@ -208,21 +220,25 @@ class DotnetCrawlingManager(CrawlingManager):
 
                 continue
         
-            finally:
-                # msu 파일명 전부 변경
-                print("\n[INFO] .msu 파일명에서 해시값 제거")
+            self._wait_til_download_ended()
 
-                for file in os.listdir(self._patch_file_path):
-                    renamed = self._msu_file_name_change(file)
+        # msu 파일명 전부 변경
+        self._wait_til_download_ended()
+        print("\n[INFO] .msu 파일명에서 해시값 제거")
 
-                    if file != renamed:
-                        try:
-                            os.rename(self._patch_file_path / file, self._patch_file_path / renamed)
-                            print(f"\t{file} -> {renamed}")
+        for file in os.listdir(self._patch_file_path):
+            renamed = self._msu_file_name_change(file)
 
-                        except FileExistsError as fe:
-                            print(fe)
-                            continue
+            if file != renamed:
+                try:
+                    os.rename(self._patch_file_path / file, self._patch_file_path / renamed)
+                    print(f"\t{file} -> {renamed}")
+
+                except FileExistsError as fe:
+                    print("\n[INFO] 중복된 파일 삭제합니다")
+                    print(file)
+                    os.remove(self._patch_file_path / file)
+                    continue
 
         return file_dict
     
@@ -399,7 +415,7 @@ class DotnetCrawlingManager(CrawlingManager):
             if not file.endswith(".msu"):
                 continue
 
-            tmp = "-".join([splt[1], splt[2]]).replace(".msu", "")
+            tmp = "-".join([splt[1], splt[2], splt[3]]).replace(".msu", "")
             flag = False
 
             print(f"{tmp} -> ", end="")
@@ -446,7 +462,7 @@ class DotnetCrawlingManager(CrawlingManager):
                 "BulletinID": f"MS-KB{qnumber}",
                 "cve": cve_string,
                 "PatchData": patch_date,
-                "중요도": "???"
+                "중요도": "Important"
             }
         
         return tmp
@@ -495,10 +511,10 @@ class DotnetCrawlingManager(CrawlingManager):
             print("[Common Info]")
 
             for qnumber in common_dict:
-                print(qnumber)
+                print(f"[{qnumber}]")
 
                 for key, val in common_dict[qnumber].items():
-                    print(f"\t{key}: {val}")
+                    print(f"\t- {key}: {val}")
                 
                 print()
 
@@ -507,6 +523,7 @@ class DotnetCrawlingManager(CrawlingManager):
             # 패치 대상의 각 카탈로그 링크에서 패치 파일 다운로드
             # 각 패치 파일 이름과 vendor URL에 대한 Dict 반환
             file_dict = self._download_patch_file()
+            self._wait_til_download_ended()
             time.sleep(3)
 
             # msu 파일 압축 해제, WSUSSCAN 파일명 변경 작업, file_dict 업데이트
@@ -530,8 +547,27 @@ class DotnetCrawlingManager(CrawlingManager):
             print("[INFO] 프로그램이 정상적으로 종료되었습니다")
         
         except Exception as e:
+            print("------------------------------------------------------------")
             print(e)
-            pass
+            print("----------------------- [ 에러 보고 ] -----------------------")
+            for err in self.error_patch_dict:
+                print(f"[{err}]")
+
+                for key in self.error_patch_dict[err]:
+                    print(f"\t- {key}: {self.error_patch_dict[err][key]}")
+            
+                print()
+            print("------------------------------------------------------------")
+
+            res = input("[ERR] 모든 파일을 삭제할까요? (y/n): ")
+
+            if res != 'y':
+                return
+            
+            shutil.rmtree(self._data_file_path)
+            shutil.rmtree(self._patch_file_path)
+            print(e)
+
 
         finally:
             # 메모리 해제
@@ -541,3 +577,17 @@ class DotnetCrawlingManager(CrawlingManager):
 if __name__ == "__main__":
     dcm = DotnetCrawlingManager()
     dcm.run()
+    
+    '''
+    cab_file_path = DotnetCrawlingManager._patch_file_path / "cabs"
+
+    # 불필요한 파일 삭제
+    for file in os.listdir(cab_file_path):
+        if file == "WSUSSCAN.cab":
+            continue
+
+        if file.find("NDP") != -1:
+            os.remove(cab_file_path / file)
+    
+    os.rename(f"{str(cab_file_path / 'WSUSSCAN.cab')}", f"{str(cab_file_path / 'asd.cab')}")
+    '''

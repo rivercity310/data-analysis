@@ -1,0 +1,16 @@
+{
+    "5033912": {
+        "BulletinID": "MS-KB5033912",
+        "KBNumber": "KB5033912",
+        "PatchData": "CVE-2023-36042,CVE-2024-0056,CVE-2024-0057,CVE-2024-21312",
+        "cve": "2024/01/21",
+        "중요도": "Important"
+    },
+    "5033919": {
+        "BulletinID": "MS-KB5033919",
+        "KBNumber": "KB5033919",
+        "PatchData": "CVE-2023-36042,CVE-2024-0056,CVE-2024-0057,CVE-2024-21312",
+        "cve": "2024/01/21",
+        "중요도": "Important"
+    }
+}

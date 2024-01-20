@@ -1,0 +1,46 @@
+{
+    "5033912": [
+        {
+            "MD5": "2a0b8666b6fc80e3a4258f32f2d2ab2e",
+            "SHA256": "a2825a494201b34703a4054fd61a7ba8254acbadd9d704751173289232efc0d8",
+            "WSUS 파일": "windows10.0-KB5033912-x64-ndp48_WSUSSCAN.cab",
+            "architecture": "x64",
+            "file_name": "windows10.0-KB5033912-x64-ndp48.msu",
+            "file_size": "66.1",
+            "product": "Windows 11, version 21H2",
+            "vendor_url": "https://catalog.s.download.windowsupdate.com/d/msdownload/update/software/secu/2023/12/windows10.0-kb5033912-x64-ndp48_88e032d58f5127300f7198ef4c778b6573e3c3f5.msu"
+        },
+        {
+            "MD5": "0ad14132e8e9588923fb1e8fa033d635",
+            "SHA256": "796539fdd293ba1b3228de438379c42102b476aec558f54b6da69ab63b886b77",
+            "WSUS 파일": "windows10.0-KB5033912-arm64-ndp48_WSUSSCAN.cab",
+            "architecture": "arm64",
+            "file_name": "windows10.0-KB5033912-arm64-ndp48.msu",
+            "file_size": "66.3",
+            "product": "Windows 11, version 21H2",
+            "vendor_url": "https://catalog.s.download.windowsupdate.com/d/msdownload/update/software/secu/2023/12/windows10.0-kb5033912-arm64-ndp48_32caea4a94323fe13ddc1c5d3ac88a5bfd236cb2.msu"
+        }
+    ],
+    "5033919": [
+        {
+            "MD5": "1a1235c06e884c58c08d34026a6f9119",
+            "SHA256": "612c98111e7c778af8aeae9c44a76ec43e67f8516620f4a177a04ca9d2381aaa",
+            "WSUS 파일": "windows11.0-KB5033919-x64-ndp481_WSUSSCAN.cab",
+            "architecture": "x64",
+            "file_name": "windows11.0-KB5033919-x64-ndp481.msu",
+            "file_size": "61.1",
+            "product": "Windows 11, version 21H2",
+            "vendor_url": "https://catalog.s.download.windowsupdate.com/d/msdownload/update/software/secu/2023/12/windows11.0-kb5033919-x64-ndp481_f636514a78c7d86686856fa1877d3fa00a0a630a.msu"
+        },
+        {
+            "MD5": "43d52b56a82706e154d1b0b2a4c35210",
+            "SHA256": "1b04dd14fac5c007363d53fe4ec73484bc8933330bcee519403e2733854b4e37",
+            "WSUS 파일": "windows11.0-KB5033919-arm64-ndp481_WSUSSCAN.cab",
+            "architecture": "arm64",
+            "file_name": "windows11.0-KB5033919-arm64-ndp481.msu",
+            "file_size": "76.1",
+            "product": "Windows 11, version 21H2",
+            "vendor_url": "https://catalog.s.download.windowsupdate.com/c/msdownload/update/software/secu/2023/12/windows11.0-kb5033919-arm64-ndp481_341b916666070539f0689a5e0854727ab9673654.msu"
+        }
+    ]
+}
