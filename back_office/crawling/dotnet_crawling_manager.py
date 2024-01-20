@@ -2,16 +2,12 @@ from crawling_manager import CrawlingManager
 from bs4 import BeautifulSoup
 from selenium.webdriver.remote.webelement import WebElement
 from selenium.webdriver.common.by import By
-from selenium.webdriver.common.keys import Keys
+from typing import List, Dict, Tuple
 from datetime import datetime
-from typing import List, Set, Dict, Tuple
-from pathlib import Path
 import re
 import time
 import os
 import hashlib
-import json
-import math
 
 
 # TODO
@@ -30,26 +26,52 @@ class DotnetCrawlingManager(CrawlingManager):
         
         self._cab_file_path = self._patch_file_path / "cabs"
         self.qnumbers: Dict[str, Tuple[str, str, BeautifulSoup]] = dict()
-        self.patch_info_dict: Dict[str, Dict[str, str]] = dict()
+        self.patch_info_dict: Dict[str, List[Tuple(str, str)]] = dict()
         self.error_patch_dict = dict()
 
 
-    def _extract_file_info(self, file_name, vendor_url):
-        time.sleep(3)
+    def _msu_file_name_change(self, name: str) -> str:
+        splt = name.split("_")
+        
+        if len(splt) == 1:
+            return splt[0].replace("kb", "KB")
+        
+        return splt[0].replace("kb", "KB") + ".msu" 
+    
 
+    def _extract_file_info(self, file_dict):
+        for qnumber in file_dict:
+            for info in file_dict[qnumber]:
+                file_name = info["file_name"]
+                
+                print(f"\n[INFO] {file_name} 압축 해제")
+                cab_file_name = self._unzip_msu_file(file_name)
+
+                time.sleep(2)
+
+                print(f"\n[INFO] {file_name} 해시값 추출")
+                file_size, md5, sha256 = self._extract_file_hash(file_name)
+
+                info.update({
+                    "file_size": file_size,
+                    "MD5": md5,
+                    "SHA256": sha256,
+                    "WSUS 파일": cab_file_name
+                })
+        
+        # 불필요한 파일 삭제
+        for file in os.listdir(self._cab_file_path):
+            if file.endswith(".xml") or file.endswith(".txt") or "NDP" in file:
+                os.remove(self._cab_file_path / file)
+
+        print(file_dict)
+
+    
+    def _unzip_msu_file(self, file_name: str) -> str:
         file_abs_path = self._patch_file_path / file_name
 
         if not os.path.exists(self._cab_file_path):
             os.mkdir(self._cab_file_path)
-
-        # 파일 크기
-        size_tmp = float(f"{os.path.getsize(file_abs_path) / (2 ** 20):.2f}")
-        file_size = math.floor(size_tmp + 0.5)
-
-        with open(file_abs_path, "rb") as fp:
-            binary = fp.read()
-            md5 = hashlib.md5(binary).hexdigest()
-            sha256 = hashlib.sha256(binary).hexdigest()
 
         # msu 파일 압축해제 (WSUSSCAN 파일만)
         cmd = f"expand -f:* {file_abs_path} {self._cab_file_path}"
@@ -57,47 +79,50 @@ class DotnetCrawlingManager(CrawlingManager):
         os.system(cmd)
         time.sleep(3)
 
-        os.rename(self._cab_file_path / "WSUSSCAN.cab", self._cab_file_path / cab_file_name)
+        try:
+            os.rename(self._cab_file_path / "WSUSSCAN.cab", self._cab_file_path / cab_file_name)
+        
+        except FileExistsError as e:
+            print(e)
+            return "err"
 
-        return {
-            "file_size": file_size,
-            "vendor_url": vendor_url,
-            "WSUS 파일": cab_file_name,
-            "MD5": md5,
-            "SHA256": sha256
-        }
+        return cab_file_name
 
+
+    def _extract_file_hash(self, file_name: str):
+        file_abs_path = self._patch_file_path / file_name
+
+        # 파일 크기
+        size_tmp = f"{float(os.path.getsize(file_abs_path)) / (2 ** 20):.1f}"
+
+        with open(file_abs_path, "rb") as fp:
+            binary = fp.read()
+            md5 = hashlib.md5(binary).hexdigest()
+            sha256 = hashlib.sha256(binary).hexdigest()
+
+        return size_tmp, md5, sha256
+        
 
     def _get_cve_string(self):
         div = self.soup.find("div", "entry-content")
         cve_list = list(map(lambda x: re.match("CVE-\d+-\d+", x.text).group(), div.find_all(id = re.compile("^cve"))))
         return ",".join(cve_list)
+    
 
+    def _get_architecture(self, file_name: str) -> str:
+        if "x86" in file_name:
+            return "x86"
         
-    def _crawling_patch_title_and_summary(self, url):
-        try:
-            self.driver.get(url)
-            self.driver.implicitly_wait(5)
-            soup = BeautifulSoup(self.driver.page_source, "html.parser")
-
-            title = soup.find(name = "h1", attrs = {"id": "page-header"}).text.strip()
-            section = soup.find(name = "section", attrs = {"id": "bkmk_summary"})
-            ps = section.find_all(name = "p")
-            
-            summary = ""
-            for p in ps:
-                if p.text.strip().startswith("CVE"):
-                    summary += p.text.strip() + "\n"
+        elif "x64" in file_name:
+            return "x64"
         
-        except Exception as e:
-            print("--------------------------- 예외 발생 -------------------------")
-            print(e)
-            return "Can't find Title", "Can't find Summary"
+        elif "arm64" in file_name:
+            return "arm64"
         
-        return title, summary
+        return "undefined"
 
 
-    def _download_patch_file(self) -> Dict[str, str]:
+    def _download_patch_file(self) -> Dict[str, List[Dict[str, str]]]:
         driver = self.driver
         file_dict = dict()
         
@@ -138,27 +163,27 @@ class DotnetCrawlingManager(CrawlingManager):
                     
                     atag: WebElement = driver.find_element(by = By.XPATH, value = xpath)
                     vendor_url = atag.get_attribute('href')
-                    file_name = self._msu_file_name_change(atag.text)
-
-                    if self._is_already_exists(atag.text):
+                    
+                    if self._is_already_exists(atag.text.split("_")[0]):
                         print("\n\t[INFO] 중복된 파일 제외")
-                        print(f"\t{file_name}")
+                        print(f"\t{atag.text}")
                         driver.close()
                         continue
                     
                     atag.click()
 
+                    file_name = self._msu_file_name_change(atag.text)
+
                     print("\n\t------------ [Downloading] ---------------")
                     print(f"\t[파일명] {file_name}")
                     print(f"\t[Vendor URL] {vendor_url}")
                     print("\t--------------------------------------------\n")
-                    
+
                     file_dict[qnumber].append({
                         "file_name": file_name,
                         "vendor_url": vendor_url,
-                        "catalog": link,
                         "product": product_version,
-                        "version": dotnet_version,
+                        "architecture": self._get_architecture(file_name)
                     })
 
                     time.sleep(4)
@@ -189,27 +214,21 @@ class DotnetCrawlingManager(CrawlingManager):
 
                 for file in os.listdir(self._patch_file_path):
                     renamed = self._msu_file_name_change(file)
-                    os.rename(self._patch_file_path / file, self._patch_file_path / renamed)
-                    print(f"\t{file} -> {renamed}")
+
+                    if file != renamed:
+                        try:
+                            os.rename(self._patch_file_path / file, self._patch_file_path / renamed)
+                            print(f"\t{file} -> {renamed}")
+
+                        except FileExistsError as fe:
+                            print(fe)
+                            continue
 
         return file_dict
     
 
     # 수집할 OS 대상, QNUMBER, CATALOG URL을 미리 수집해두고 시작
     def _init_patch_data(self) -> None:
-        # patch_info_dict 구조
-        """
-        {
-            "Microsoft server operation system, version 22H2": [
-                (".NET Framework 3.5, 4.8", "5033912"),
-                (".NET Framework 3.5, 4.8.1", "5033914")
-                ...
-            ],
-            
-            ...
-        }
-        """
-        
         patch_info_dict = self.patch_info_dict
         soup = self.soup
         qnumbers = self.qnumbers
@@ -325,55 +344,200 @@ class DotnetCrawlingManager(CrawlingManager):
         return f"{date[-1]}/{date[0]}/{int(date[1]) + 1}"
 
 
-    def test(self) -> None:
-        # 패치 대상 데이터 초기화
-        self._init_patch_data()
+    def _get_title_and_summary(self, file_dict) -> Dict[str, Dict[str, str]]:
+        tmp = dict()
+
+        driver = self.driver
+        nations = ["en-us", "ko-kr", "ja-jp", "zh-cn"]
+        bulletin = "https://support.microsoft.com/{}/help/{}"
         
-        # 프롬프트 출력, 패치 대상 데이터 최종 결정(제거)
-        self._show_prompt()
-        os.system("pause")
-        
-        # 프롬프트 창 clear
-        os.system("cls")
+        for qnumber in file_dict:
+            tmp[qnumber] = dict()
 
-        # 패치 날짜 정보 가져오기 (TODO 문서마다 다름)
-        print("------------------------------------------")
-        # patch_date = self._get_patch_date()
-        # print("[Patch Date]", patch_date)
+            for nation in nations:
+                try:
+                    bulletin_url = bulletin.format(nation, qnumber)
+                    driver.get(bulletin_url)
 
-        # 패치 CVE 문자열 가져오기
-        # 이 이후로 soup 객체를 사용하지 않으므로 메모리 해제
-        cve_string = self._get_cve_string()
-        print("[CVE List]", cve_string)
-        del self.soup
-        print("------------------------------------------\n\n")
+                    self._driver_wait(By.ID, "page-header")
+                    self._driver_wait(By.ID, "bkmk_summary")
+                    time.sleep(1)
 
-        # 패치 대상의 각 카탈로그 링크에서 패치 파일 다운로드
-        # 각 패치 파일 이름과 vendor URL에 대한 Dict 반환
-        file_dict = self._download_patch_file()
+                    soup = BeautifulSoup(driver.page_source, "html.parser")
+                    title = soup.find(name = "h1", attrs = {"id": "page-header"}).text.strip()
+                    section = soup.find(name = "section", attrs = {"id": "bkmk_summary"})
+                    ps = section.find_all(name = "p")
+            
+                    summary = ""
+                    for p in ps:
+                        pstrip = p.text.strip()
+                        if pstrip.startswith("CVE"):
+                            summary += pstrip.replace(u"\u2013", "-")
+                    
+                    tmp[qnumber][nation] = dict()
 
-        print("\n[INFO] 패치 파일 다운로드 작업 완료")
-        self._save_result(self._crawling_dir_path / "file_dict.json", file_dict)
+                    print(bulletin_url)
+                    tmp[qnumber][nation]["bulletin_url"] = bulletin_url 
 
-        print(self.error_patch_dict)
-        for key in self.error_patch_dict:
-            print("--------------------------------------")
-            print(key, ": ")
+                    print(title)
+                    tmp[qnumber][nation]["title"] = title
 
-            for params in self.error_patch_dict[key]:
-                for param in params:
-                    print(f"\t{param}: {params[param]}")
+                    print(summary)
+                    tmp[qnumber][nation]["summary"] = summary
 
-            print("--------------------------------------")
+                except Exception as e:
+                    continue
 
-        # 메모리 해제
-        self._del_driver()
+        return tmp
+
+
+    def _check_msu_and_cab_file_exists(self):
+        # cab 파일과 msu 파일이 모두 있는지 검사
+        for file in os.listdir(self._patch_file_path):
+            splt = file.split("-")
+            
+            if not file.endswith(".msu"):
+                continue
+
+            tmp = "-".join([splt[1], splt[2]]).replace(".msu", "")
+            flag = False
+
+            print(f"{tmp} -> ", end="")
+
+            for cab in os.listdir(self._cab_file_path):
+                if tmp in cab:
+                    print(f"{cab} 확인", end="")
+                    flag = True
+                    break
+            
+            if not flag:
+                raise Exception(f"{tmp}에 대한 cab 파일이 확인되지 않습니다.")
+            
+            print()
+
+
+    def _check_all_qnumber_file_exists(self):
+        qnumbers = set(self.qnumbers.keys())
+        file_qnumbers = set()
+
+        for file in os.listdir(self._patch_file_path):
+            if not file.endswith(".msu"):
+                continue
+
+            qnumber = file.split("-")[1][2:]
+            file_qnumbers.add(qnumber)
+
+            if qnumber not in qnumbers:
+                raise Exception(f"[{qnumber}] 대상 QNumber 포함되지 않은 패치 파일입니다.")
+
+        # 교집합의 여집합이 0개가 되어야 한다.
+        diff = file_qnumbers.difference(qnumbers & file_qnumbers)
+
+        if len(diff) != 0:
+            raise Exception(f"[{diff}] 수집되지 않은 QNumber가 존재합니다.")
 
     
-    def _msu_file_name_change(self, name: str) -> str:
-        return name.split("_")[0].replace("kb", "KB") + ".msu" 
+    def _get_common_info(self, cve_string: str, patch_date: str) -> Dict[str, str]:
+        tmp = dict()
+
+        for qnumber in self.qnumbers:
+            tmp[qnumber] = {
+                "KBNumber": f"KB{qnumber}",
+                "BulletinID": f"MS-KB{qnumber}",
+                "cve": cve_string,
+                "PatchData": patch_date,
+                "중요도": "???"
+            }
         
+        return tmp
+
+
+    def _del_driver(self):
+        try:
+            del self.qnumbers
+            del self.patch_info_dict
+            del self.error_patch_dict
+            del self.driver
+
+        except Exception as _:
+            pass
+
+        finally:
+            super()._del_driver()
+
+
+    def run(self) -> None:
+        try:
+            # 패치 대상 데이터 초기화
+            self._init_patch_data()
+            
+            # 프롬프트 출력, 패치 대상 데이터 최종 결정(제거)
+            self._show_prompt()
+            
+            # 프롬프트 창 clear
+            os.system("cls")
+
+            # 패치 날짜 정보 가져오기 (TODO 문서마다 다름)
+            print("------------------------------------------")
+            patch_date = datetime.today().strftime("%Y/%m/%d") # self._get_patch_date()
+            print("[Patch Date]", patch_date)
+
+            # 패치 CVE 문자열 가져오기
+            # 이 이후로 soup 객체를 사용하지 않으므로 메모리 해제
+            cve_string = self._get_cve_string()
+            print("[CVE List]", cve_string)
+            del self.soup
+            print("------------------------------------------\n\n")
+
+            # BulletinID, KBNumber, PatchDate, CVE, 중요도 정보 가져오기
+            # TODO 중요도 정보 가져오기 (MSRC)s
+            common_dict = self._get_common_info(patch_date, cve_string)
+            print("[Common Info]")
+
+            for qnumber in common_dict:
+                print(qnumber)
+
+                for key, val in common_dict[qnumber].items():
+                    print(f"\t{key}: {val}")
+                
+                print()
+
+            self._save_result(self._data_file_path / "common_info.json", common_dict)
+
+            # 패치 대상의 각 카탈로그 링크에서 패치 파일 다운로드
+            # 각 패치 파일 이름과 vendor URL에 대한 Dict 반환
+            file_dict = self._download_patch_file()
+            time.sleep(3)
+
+            # msu 파일 압축 해제, WSUSSCAN 파일명 변경 작업, file_dict 업데이트
+            self._extract_file_info(file_dict)
+
+            # 모든 파일이 정상적으로 존재하는지 검증
+            self._check_msu_and_cab_file_exists()
+
+            # 모든 QNumber에 대해 수집되었는지 검증
+            self._check_all_qnumber_file_exists()
+
+            # 검증이 끝났으면 결과 json 파일로 저장
+            print("\n[INFO] 패치 파일 다운로드 작업 완료")
+            self._save_result(self._data_file_path / "patch_file_info.json", file_dict)
+
+            # 각 언어별 bulletin URL에서 제목과 요약 수집
+            tmp = self._get_title_and_summary(file_dict)
+            self._save_result(self._data_file_path / "title_summary.json", tmp)
+
+            os.system("cls")
+            print("[INFO] 프로그램이 정상적으로 종료되었습니다")
+        
+        except Exception as e:
+            print(e)
+            pass
+
+        finally:
+            # 메모리 해제
+            self._del_driver()
+
 
 if __name__ == "__main__":
     dcm = DotnetCrawlingManager()
-    dcm.test()
+    dcm.run()

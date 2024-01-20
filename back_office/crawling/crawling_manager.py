@@ -1,6 +1,7 @@
 import os
 import json
 import time
+import sys
 from bs4 import BeautifulSoup
 from selenium import webdriver
 from selenium.webdriver import ActionChains
@@ -17,7 +18,7 @@ class CrawlingManager:
 
     _patch_file_path = _crawling_dir_path / "patchfiles"
 
-    _json_file_path = _crawling_dir_path / "result.json"
+    _data_file_path = _crawling_dir_path / "output"
 
     _chrome_driver_path = _crawling_dir_path / "chromedriver.exe"
 
@@ -25,14 +26,23 @@ class CrawlingManager:
     def __init__(self):
         os.system("cls")
 
+        # patchfiles 폴더가 없으면 생성
+        if not os.path.exists(self._patch_file_path):
+            os.mkdir(self._patch_file_path)
+
+        # output 폴더가 없으면 생성
+        if not os.path.exists(self._data_file_path):
+            os.mkdir(self._data_file_path)        
+
         # patchfiles 폴더 비어있는지 검사 
         while True:
             if len(os.listdir(self._patch_file_path)) == 0:
                 break
+
             input(f"{self._patch_file_path} 폴더를 비우고 <Enter>를 입력하세요.")
-        
-        
-        url = input("크롤링할 사이트의 주소를 입력해주세요: ")
+
+        # .NET Blog URL 입력받고 시작
+        url = input("크롤링할 .NET 패치노트 주소를 입력해주세요: ")
 
         # 다운로드 경로 설정
         options = webdriver.ChromeOptions()
@@ -46,10 +56,11 @@ class CrawlingManager:
         })
         
         # selenium 버전 높은 경우 -> executable_path Deprecated -> Service 객체 사용
+        print(f"Python {sys.version} running")
         try:
             self.driver = webdriver.Chrome(options = options, service = Service(executable_path = self._chrome_driver_path))
         except Exception as _:
-            print("[WARN] 구버전 webdriver로 동작합니다.")
+            print("[INFO] 구버전 webdriver로 동작합니다.")
             self.driver = webdriver.Chrome(executable_path = str(self._chrome_driver_path), options = options)
         
         # Get 요청 후 HTML 파싱
@@ -116,14 +127,12 @@ class CrawlingManager:
 
         except Exception as e:
             print(e)
-            self._del_driver()
 
 
     def _del_driver(self):
         try:
             del self.soup
             del self.driver
-            del self
         
         except Exception as _:
             pass
