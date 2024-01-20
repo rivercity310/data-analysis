@@ -11,16 +11,6 @@ import hashlib
 import shutil
 
 
-# TODO
-# 1. _patch_files_path 폴더 비우기 작업 -> 완료
-# 2. 추출된 Title, Summary에서 특정 유니코드 제거 작업 (문자열화) ex. - : \u2013
-# 3. 중요도 수집
-# 4. 코드 모듈화
-# 5. CVE번호 MSRC에 검색해서 검증하기
-# 6. 제품명에 따른 다운로드 예외 처리 (https://www.catalog.update.microsoft.com/Search.aspx?q=5034119) 링크에서 Windows Server 2016 -> 완료
-# 7. 예외 발생시 수집 Title, Summary
-
-
 class DotnetCrawlingManager(CrawlingManager):
     def __init__(self):
         super().__init__()
@@ -34,9 +24,24 @@ class DotnetCrawlingManager(CrawlingManager):
     def _msu_file_name_change(self, name: str) -> str:
         splt = name.split("_")
         
-        if len(splt) == 1:
-            return splt[0].replace("kb", "KB")
-        
+        # ndp가 안붙은 파일의 경우
+        if splt[0].find("ndp") == -1:
+            qnumber = name[name.find("kb") + 2:name.rfind("-")]
+            dotnet_version = self.qnumbers[qnumber][1]
+
+            print(f"[No ndp] {qnumber} {dotnet_version}", end="")
+            
+            tmp = ""
+            if "4.8" in dotnet_version:
+                tmp = "48"
+            elif "4.8.1" in dotnet_version:
+                tmp = "481"
+            else:
+                tmp = "472"
+
+            splt[0] = splt[0] + "-ndp" + tmp
+            print(f" -> {splt[0].replace('kb', 'KB') + '.msu'}")
+
         return splt[0].replace("kb", "KB") + ".msu" 
     
 
@@ -89,7 +94,6 @@ class DotnetCrawlingManager(CrawlingManager):
         except FileExistsError as e:    
             print(e)
             return "err"
-        
 
         return cab_file_name
 
@@ -410,10 +414,11 @@ class DotnetCrawlingManager(CrawlingManager):
     def _check_msu_and_cab_file_exists(self):
         # cab 파일과 msu 파일이 모두 있는지 검사
         for file in os.listdir(self._patch_file_path):
-            splt = file.split("-")
             
             if not file.endswith(".msu"):
                 continue
+
+            splt = file.split("-")
 
             tmp = "-".join([splt[1], splt[2], splt[3]]).replace(".msu", "")
             flag = False
@@ -425,7 +430,7 @@ class DotnetCrawlingManager(CrawlingManager):
                     print(f"{cab} 확인", end="")
                     flag = True
                     break
-            
+           
             if not flag:
                 raise Exception(f"{tmp}에 대한 cab 파일이 확인되지 않습니다.")
             
@@ -518,8 +523,6 @@ class DotnetCrawlingManager(CrawlingManager):
                 
                 print()
 
-            self._save_result(self._data_file_path / "common_info.json", common_dict)
-
             # 패치 대상의 각 카탈로그 링크에서 패치 파일 다운로드
             # 각 패치 파일 이름과 vendor URL에 대한 Dict 반환
             file_dict = self._download_patch_file()
@@ -535,6 +538,9 @@ class DotnetCrawlingManager(CrawlingManager):
             # 모든 QNumber에 대해 수집되었는지 검증
             self._check_all_qnumber_file_exists()
 
+            # 검증 이후에 공통 정보도 저장 
+            self._save_result(self._data_file_path / "common_info.json", common_dict)
+            
             # 검증이 끝났으면 결과 json 파일로 저장
             print("\n[INFO] 패치 파일 다운로드 작업 완료")
             self._save_result(self._data_file_path / "patch_file_info.json", file_dict)
@@ -550,12 +556,11 @@ class DotnetCrawlingManager(CrawlingManager):
             print("------------------------------------------------------------")
             print(e)
             print("----------------------- [ 에러 보고 ] -----------------------")
-            for err in self.error_patch_dict:
-                print(f"[{err}]")
-
-                for key in self.error_patch_dict[err]:
-                    print(f"\t- {key}: {self.error_patch_dict[err][key]}")
-            
+            for qnumber in self.error_patch_dict:
+                print(f"[{qnumber}]")
+                for err_obj in self.error_patch_dict[qnumber]:
+                    for key, val in err_obj.items():
+                        print(f"\t{key}: {val}")
                 print()
             print("------------------------------------------------------------")
 
@@ -568,7 +573,6 @@ class DotnetCrawlingManager(CrawlingManager):
             shutil.rmtree(self._patch_file_path)
             print(e)
 
-
         finally:
             # 메모리 해제
             self._del_driver()
@@ -578,16 +582,3 @@ if __name__ == "__main__":
     dcm = DotnetCrawlingManager()
     dcm.run()
     
-    '''
-    cab_file_path = DotnetCrawlingManager._patch_file_path / "cabs"
-
-    # 불필요한 파일 삭제
-    for file in os.listdir(cab_file_path):
-        if file == "WSUSSCAN.cab":
-            continue
-
-        if file.find("NDP") != -1:
-            os.remove(cab_file_path / file)
-    
-    os.rename(f"{str(cab_file_path / 'WSUSSCAN.cab')}", f"{str(cab_file_path / 'asd.cab')}")
-    '''
