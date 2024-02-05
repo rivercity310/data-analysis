@@ -1,0 +1,37 @@
+@endpoint = http://127.0.0.1:8000/product
+
+###
+GET {{endpoint}} HTTP/1.1
+Accept: application/json
+
+
+###
+GET {{endpoint}}/1 HTTP/1.1
+Accept: application/json
+
+
+### 
+POST {{endpoint}} HTTP/1.1
+Accept: application/json
+Content-Type: application/json
+
+{
+    "product_name": "Office 365 ProPlus",
+    "product_platform": "x64"
+}
+
+
+###
+PUT {{endpoint}}/1 HTTP/1.1
+Accept: application/json
+Content-Type: application/json
+
+{
+    "product_name": "",
+    "product_platform": "x64"
+}
+
+
+### 
+DELETE {{endpoint}}/1 HTTP/1.1
+Accept: application/json

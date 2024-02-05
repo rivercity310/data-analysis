@@ -1,0 +1,25 @@
+@endpoint = http://127.0.0.1:8000/patch
+
+### 
+GET {{endpoint}} HTTP/1.1
+Accept: application/json
+
+
+### 
+GET {{endpoint}}/1 HTTP/1.1
+Accept: application/json
+Content-Type: application/json
+
+
+###
+POST {{endpoint}} HTTP/1.1
+Accept: application/json
+Content-Type: application/json
+
+{
+    "patch_title": "Microsoft Office 365 (인터넷 연결이 필요한 패치입니다)",
+    "patch_summary": "이 업데이트는 CVE-2024-20677의 Microsoft Office 보안 취약성을 해결합니다.",
+    "patch_language": "ko-kr",
+    "patch_detail_id": 1,
+    "product_id": 1   
+}
