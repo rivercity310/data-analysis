@@ -10,6 +10,7 @@ CREATE TABLE product (
     product_id              INT         NOT NULL,
     product_name            VARCHAR     NOT NULL,
     product_architecture    VARCHAR     NOT NULL,
+    register_user_email     VARCHAR     NOT NULL,
     register_user_id        INT         NOT NULL,
     PRIMARY KEY (product_id)
     FOREIGN KEY (register_user_id) REFERENCES users (user_id)

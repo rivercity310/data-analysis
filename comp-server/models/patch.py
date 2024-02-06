@@ -11,6 +11,7 @@ class Patch(SQLModel, table=True):
     patch_summary: str = Field(nullable=False)
     patch_language: PatchLanguage = Field(nullable=False)
     patch_status: PatchStatus = Field(nullable=False)
+    register_user_email: str = Field(nullable=False)
     patch_detail_id: int | None = Field(nullable=False, foreign_key="patch_detail.patch_detail_id")
     product_id: int | None = Field(nullable=False, foreign_key="product.product_id")
     

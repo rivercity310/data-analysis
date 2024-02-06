@@ -8,6 +8,7 @@ class Product(SQLModel, table=True):
     product_id: int | None = Field(default=None, primary_key=True)
     product_name: str = Field(nullable=False)
     product_architecture: PatchPlatform = Field(nullable=False)
+    register_user_email: str = Field(nullable=False)
     register_user_id: int = Field(nullable=False, foreign_key="users.user_id")
     
     class Config:

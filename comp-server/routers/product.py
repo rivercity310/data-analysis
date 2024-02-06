@@ -36,7 +36,7 @@ async def add_product(
     user: str = Depends(authenticate),
     session: Session = Depends(get_session)
 ) -> Product:
-    
+    product.register_user_email = user
     session.add(product)
     session.commit()
     session.refresh(product)
@@ -45,15 +45,25 @@ async def add_product(
 
 @product_router.put("/{id}")
 async def update_product(
-    id: int, 
+    id: int,
     product_update: ProductUpdate, 
+    user: str = Depends(authenticate),
     session: Session = Depends(get_session)
 ) -> Product:
     product = session.get(Product, id) 
     product_data = product_update.model_dump()
    
     if not product:
-       raise HTTPException(status_code = status.HTTP_404_NOT_FOUND,detail = f"CAN'T FIND PRODUCT ID {id}")
+       raise HTTPException(
+           status_code = status.HTTP_404_NOT_FOUND,
+           detail = f"CAN'T FIND PRODUCT ID {id}"
+        )
+    
+    if product.register_user_email != user:
+        raise HTTPException(
+            status_code = status.HTTP_403_FORBIDDEN,
+            detail = f"OPERATING NOT ALLOWED"
+        )
     
     for key, value in product_data.items():
         if type(value) == str and not value.strip():
@@ -71,6 +81,7 @@ async def update_product(
 @product_router.delete("/{id}")
 async def delete_product(
     id: int, 
+    user: str = Depends(authenticate),
     session: Session = Depends(get_session)
 ) -> Product:
     product = session.get(Product, id)
@@ -79,6 +90,12 @@ async def delete_product(
         raise HTTPException(
             status_code = status.HTTP_404_NOT_FOUND,
             detail = f"CAN'T NOT FIND PRODUCT ID {id}"
+        )
+    
+    if product.register_user_email != user:
+        raise HTTPException(
+            status_code = status.HTTP_403_FORBIDDEN,
+            detail = f"OPERATING NOT ALLOWED"
         )
         
     session.delete(product)
