@@ -1,0 +1,43 @@
+@endpoint = http://127.0.0.1:8000/user
+
+### 
+POST {{endpoint}}/signup HTTP/1.1
+Accept: application/json
+Content-Type: application/json
+
+{
+    "user_email": "h9701261@gmail.com",
+    "user_password": "12345"
+}
+
+
+###
+GET {{endpoint}}/ HTTP/1.1
+Accept: application/json
+
+
+### 
+POST {{endpoint}}/signin HTTP/1.1
+Accept: application/json
+Content-Type: application/x-www-form-urlencoded
+
+{
+    "username=h970126@gmail.com&password=1234&grant_type="
+}
+
+
+
+### 
+DELETE {{endpoint}}
+Accept: application/json
+Content-Type: application/json
+
+{
+    "user_email": "h970126@gmail.com",
+    "user_password": "1234"
+}
+
+
+###
+GET http://127.0.0.1:8000/token HTTP/1.1
+Accept: application/json

@@ -1,10 +1,12 @@
 from sqlmodel import SQLModel, Field
-from enums.patch_severity import PatchSeverity
-from enums.patch_status import PatchStatus
+from enums import PatchSeverity
+from enums import PatchStatus
 
 
 class PatchDetail(SQLModel, table=True):
-    id: int = Field(default=None, primary_key=True)
+    __tablename__ = "patch_detail"
+    
+    patch_detail_id: int | None = Field(default=None, primary_key=True)
     bulletin_id: str = Field(nullable=False)
     bulletin_url: str = Field(nullable=False)
     patch_status: PatchStatus = Field(nullable=False)
@@ -23,8 +25,8 @@ class PatchDetail(SQLModel, table=True):
                 "id": 1,
                 "bulletin_id": "1234",
                 "bulletin_url": "https://learn.microsoft.com/ko-kr/officeupdates/current-channel",
-                "status": PatchStatus.DOWNLOAD,
-                "severity": PatchSeverity.IMPORTANT,
+                "status": PatchStatus.DOWNLOAD.value,
+                "severity": PatchSeverity.IMPORTANT.value,
                 "issue": "",
                 "cve": "CVE-2024-20677",
                 "created_at": "2024/02/05",

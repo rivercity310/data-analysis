@@ -1,20 +1,24 @@
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlmodel import select
+from sqlmodel import select, Session
 from database.connection import get_session
 from models.product import Product, ProductUpdate
+from auth.authenticate import authenticate
 
 
 product_router = APIRouter(tags=["product_router"])
 
 
 @product_router.get("/")
-async def get_all_product(session=Depends(get_session)) -> list[Product]:
+async def get_all_product(session: Session = Depends(get_session)) -> list[Product]:
     stat = select(Product)
     return session.exec(stat).all()    
 
 
 @product_router.get("/{id}")
-async def get_product(id: int, session=Depends(get_session)) -> Product:
+async def get_product(
+    id: int, 
+    session: Session = Depends(get_session)
+) -> Product:
     product = session.get(Product, id)
     
     if not product:
@@ -27,7 +31,12 @@ async def get_product(id: int, session=Depends(get_session)) -> Product:
 
 
 @product_router.post("/")
-async def add_product(product: Product, session=Depends(get_session)) -> Product:
+async def add_product(
+    product: Product, 
+    user: str = Depends(authenticate),
+    session: Session = Depends(get_session)
+) -> Product:
+    
     session.add(product)
     session.commit()
     session.refresh(product)
@@ -35,13 +44,16 @@ async def add_product(product: Product, session=Depends(get_session)) -> Product
 
 
 @product_router.put("/{id}")
-async def update_product(id: int, product_update: ProductUpdate, session=Depends(get_session)) -> Product:
+async def update_product(
+    id: int, 
+    product_update: ProductUpdate, 
+    session: Session = Depends(get_session)
+) -> Product:
     product = session.get(Product, id) 
+    product_data = product_update.model_dump()
    
     if not product:
        raise HTTPException(status_code = status.HTTP_404_NOT_FOUND,detail = f"CAN'T FIND PRODUCT ID {id}")
-    
-    product_data = product_update.model_dump()
     
     for key, value in product_data.items():
         if type(value) == str and not value.strip():
@@ -57,7 +69,10 @@ async def update_product(id: int, product_update: ProductUpdate, session=Depends
     
     
 @product_router.delete("/{id}")
-async def delete_product(id: int, session = Depends(get_session)) -> Product:
+async def delete_product(
+    id: int, 
+    session: Session = Depends(get_session)
+) -> Product:
     product = session.get(Product, id)
     
     if not product:

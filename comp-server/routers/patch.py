@@ -4,13 +4,13 @@ from models.patch import Patch
 from database.connection import get_session
 
 
-patch_router = APIRouter(tags=["patch"])
+patch_router = APIRouter(tags=["patch_router"])
 
 
 @patch_router.get("/")
 async def get_all_patches(session = Depends(get_session)) -> list[Patch]:
     stat = select(Patch)
-    patches = session.exec(stat).all()
+    patches = session.execute(stat).all()
     return patches
 
 
